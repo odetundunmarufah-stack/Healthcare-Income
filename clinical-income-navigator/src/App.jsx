@@ -1,0 +1,157 @@
+import { useState } from "react";
+import { STEPS } from "./data/steps";
+import { parseSections } from "./utils/parseSections";
+import LandingPage from "./components/LandingPage";
+import QuizStep from "./components/QuizStep";
+import LoadingScreen from "./components/LoadingScreen";
+import ResultsPage from "./components/ResultsPage";
+import PaymentGate from "./components/PaymentGate";
+import { sendResultEmail } from "./utils/email";
+import "./styles/app.css";
+
+export default function App() {
+  const [paid, setPaid] = useState(() => localStorage.getItem("paid") === "true");
+  const [phase, setPhase] = useState("landing");
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [multiSel, setMultiSel] = useState([]);
+  const [textVal, setTextVal] = useState("");
+  const [rating, setRating] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [streamed, setStreamed] = useState("");
+  const [report, setReport] = useState("");
+  const [error, setError] = useState("");
+
+  const cur = STEPS[step];
+
+  const canProceed =
+    cur.type === "multi" ? multiSel.length > 0 :
+    cur.type === "text" ? textVal.trim().length > 0 :
+    cur.type === "rating" ? rating > 0 :
+    !!answers[cur.id];
+
+  const getValue = () => {
+    if (cur.type === "multi") return multiSel.length > 0 ? multiSel.join("; ") : "";
+    if (cur.type === "text") return textVal.trim();
+    if (cur.type === "rating") return rating > 0 ? String(rating) : "";
+    return answers[cur.id] || "";
+  };
+
+  const handleSingle = (o) => setAnswers(p => ({ ...p, [cur.id]: o }));
+  const toggleMulti = (o) => setMultiSel(p => p.includes(o) ? p.filter(x => x !== o) : [...p, o]);
+
+  const handleNext = () => {
+    const val = getValue();
+    if (!val) return;
+    const updated = { ...answers, [cur.id]: val };
+    setAnswers(updated);
+    setMultiSel([]); setTextVal(""); setRating(0); setHover(0);
+    if (step < STEPS.length - 1) setStep(s => s + 1);
+    else runAI(updated);
+  };
+
+  const handleBack = () => {
+    if (step === 0) return;
+    const prev = STEPS[step - 1];
+    const prevVal = answers[prev.id] || "";
+    if (prev.type === "multi") setMultiSel(prevVal ? prevVal.split("; ") : []);
+    else if (prev.type === "text") setTextVal(prevVal);
+    else if (prev.type === "rating") setRating(prevVal ? parseInt(prevVal) : 0);
+    setStep(s => s - 1);
+  };
+
+  const runAI = async (final) => {
+    setPhase("loading");
+    setStreamed(""); setReport(""); setError("");
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 4000, stream: true,
+          messages: [{ role: "user", content: buildPrompt(final) }],
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setPhase("results");
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let full = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        for (const line of dec.decode(value).split("\n").filter(l => l.startsWith("data: "))) {
+          try {
+            const j = JSON.parse(line.slice(6));
+            if (j.type === "content_block_delta" && j.delta?.text) {
+              full += j.delta.text;
+              setStreamed(full);
+            }
+          } catch {}
+        }
+      }
+      setReport(full);
+      sendResultEmail(localStorage.getItem("paid_email"), full);
+    } catch {
+      setError("Something went wrong. Please try again.");
+      setPhase("quiz");
+    }
+  };
+
+  const sections = parseSections(streamed);
+  const done = report && streamed === report;
+
+  const reset = () => {
+    setPhase("landing"); setStep(0); setAnswers({});
+    setMultiSel([]); setTextVal(""); setRating(0);
+    setStreamed(""); setReport(""); setError("");
+  };
+
+  return (
+    <div>
+      {phase === "landing" && (
+        <LandingPage onStart={() => {
+          if (!paid) { setPhase("payment"); return; }
+          setPhase("quiz");
+        }} />
+      )}
+
+      {phase === "payment" && (
+        <PaymentGate onSuccess={() => { setPaid(true); setPhase("quiz"); }} />
+      )}
+
+      {phase === "quiz" && paid && (
+        <QuizStep
+          step={step}
+          answers={answers}
+          multiSel={multiSel}
+          textVal={textVal}
+          rating={rating}
+          hover={hover}
+          error={error}
+          canProceed={canProceed}
+          onSingle={handleSingle}
+          onToggleMulti={toggleMulti}
+          onTextChange={setTextVal}
+          onRating={setRating}
+          onHover={setHover}
+          onHoverLeave={() => setHover(0)}
+          onNext={handleNext}
+          onBack={handleBack}
+        />
+      )}
+
+      {phase === "loading" && <LoadingScreen />}
+
+      {phase === "results" && (
+        <ResultsPage
+          sections={sections}
+          done={done}
+          streamed={streamed}
+          onReset={reset}
+        />
+      )}
+    </div>
+  );
+}
