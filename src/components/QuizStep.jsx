@@ -1,6 +1,8 @@
 import { STEPS } from "../data/steps";
 import { getRatingDesc } from "../utils/getRatingDesc";
 
+const OTHER_OPTION = "Other — please describe below";
+
 export default function QuizStep({
   step,
   answers,
@@ -10,19 +12,26 @@ export default function QuizStep({
   hover,
   error,
   canProceed,
+  otherText,
   onSingle,
   onToggleMulti,
   onTextChange,
+  onOtherText,
   onRating,
   onHover,
   onHoverLeave,
   onNext,
   onBack,
+  userName,
 }) {
   const cur = STEPS[step];
   const pct = Math.round(((step + 1) / STEPS.length) * 100);
   const prevStep = step > 0 ? STEPS[step - 1] : null;
   const sectionChanged = !prevStep || prevStep.section !== cur.section;
+
+  const singleOtherSelected = cur.type === "single" && answers[cur.id] === OTHER_OPTION;
+  const multiOtherSelected = cur.type === "multi" && multiSel.includes(OTHER_OPTION);
+  const showOtherBox = (singleOtherSelected || multiOtherSelected) && cur.hasOther;
 
   return (
     <div className="quiz-shell">
@@ -47,7 +56,11 @@ export default function QuizStep({
           {cur.type === "text" && "Your answer"}
           {cur.type === "rating" && "Rate yourself — 1 to 10"}
         </div>
-        <h2 className="q-title">{cur.question}</h2>
+        <h2 className="q-title">
+          {userName && cur.sectionNum === 1 && step === 0
+            ? `${userName}, ${cur.question.charAt(0).toLowerCase()}${cur.question.slice(1)}`
+            : cur.question}
+        </h2>
         {cur.hint && <p className="q-hint">{cur.hint}</p>}
 
         {cur.type === "single" && (
@@ -64,6 +77,17 @@ export default function QuizStep({
                 {o}
               </button>
             ))}
+            {cur.hasOther && (
+              <button
+                className={`opt${answers[cur.id] === OTHER_OPTION ? " sel" : ""}`}
+                onClick={() => onSingle(OTHER_OPTION)}
+              >
+                <span className="opt-ind">
+                  {answers[cur.id] === OTHER_OPTION && <span className="opt-dot" />}
+                </span>
+                {OTHER_OPTION}
+              </button>
+            )}
           </div>
         )}
 
@@ -80,11 +104,30 @@ export default function QuizStep({
                   {o}
                 </button>
               ))}
+              {cur.hasOther && (
+                <button
+                  className={`opt${multiSel.includes(OTHER_OPTION) ? " sel" : ""}`}
+                  onClick={() => onToggleMulti(OTHER_OPTION)}
+                >
+                  <span className="opt-ind opt-box">{multiSel.includes(OTHER_OPTION) ? "✓" : ""}</span>
+                  {OTHER_OPTION}
+                </button>
+              )}
             </div>
             {multiSel.length > 0 && (
               <p className="sel-count">{multiSel.length} selected</p>
             )}
           </>
+        )}
+
+        {showOtherBox && (
+          <textarea
+            className="q-ta q-ta-other"
+            placeholder="Please describe your answer here..."
+            value={otherText}
+            onChange={e => onOtherText(e.target.value)}
+            style={{ marginTop: 10 }}
+          />
         )}
 
         {cur.type === "text" && (

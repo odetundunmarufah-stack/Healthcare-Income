@@ -1,7 +1,7 @@
 export default function LoadingScreen() {
   return (
     <div className="load-wrap">
-      <div className="load-logo">Healthcare Income Navigator</div>
+      <div className="load-logo">Your Clinical Currency</div>
       <div className="load-ring" />
       <h2 className="load-h">Analysing your profile across 28 data points...</h2>
       <p className="load-p">

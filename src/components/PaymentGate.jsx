@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 // ─── Replace with your live/test public key from dashboard.paystack.com ───────
-const PAYSTACK_PUBLIC_KEY = "pk_test_REPLACE_WITH_YOUR_KEY";
+const PAYSTACK_PUBLIC_KEY = "pk_test_6985353ebd37ce77f7813eecbffd52b1065114ad";
 const AMOUNT_KOBO = 500000; // ₦5,000 × 100
 
 export default function PaymentGate({ onSuccess }) {
@@ -24,7 +24,7 @@ export default function PaymentGate({ onSuccess }) {
       email,
       amount: AMOUNT_KOBO,
       currency: "NGN",
-      label: "Healthcare Income Navigator",
+      label: "Your Clinical Currency",
       onClose: () => {
         setLoading(false);
       },
@@ -46,7 +46,7 @@ export default function PaymentGate({ onSuccess }) {
   return (
     <div className="pg-overlay">
       <div className="pg-card">
-        <div className="pg-logo">Healthcare<span>Income</span> Navigator</div>
+        <div className="pg-logo">Your<span>Clinical</span>Currency</div>
         <div className="pg-badge">One-time access</div>
         <h2 className="pg-title">Unlock Your Personalised Report</h2>
         <p className="pg-body">

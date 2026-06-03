@@ -2,20 +2,27 @@ import { useState } from "react";
 import { STEPS } from "./data/steps";
 import { parseSections } from "./utils/parseSections";
 import LandingPage from "./components/LandingPage";
+import LeadGate from "./components/LeadGate";
 import QuizStep from "./components/QuizStep";
+import FreeSummary from "./components/FreeSummary";
 import LoadingScreen from "./components/LoadingScreen";
 import ResultsPage from "./components/ResultsPage";
 import PaymentGate from "./components/PaymentGate";
 import { sendResultEmail } from "./utils/email";
+import { buildPrompt } from "./utils/buildPrompt";
 import "./styles/app.css";
+
+const OTHER_OPTION = "Other — please describe below";
 
 export default function App() {
   const [paid, setPaid] = useState(() => localStorage.getItem("paid") === "true");
+  const [userName, setUserName] = useState(() => localStorage.getItem("lead_name") || "");
   const [phase, setPhase] = useState("landing");
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [multiSel, setMultiSel] = useState([]);
   const [textVal, setTextVal] = useState("");
+  const [otherText, setOtherText] = useState("");
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [streamed, setStreamed] = useState("");
@@ -24,16 +31,30 @@ export default function App() {
 
   const cur = STEPS[step];
 
+  const singleOtherSelected = cur.type === "single" && answers[cur.id] === OTHER_OPTION;
+  const multiOtherSelected = cur.type === "multi" && multiSel.includes(OTHER_OPTION);
+  const otherRequired = (singleOtherSelected || multiOtherSelected) && cur.hasOther;
+
   const canProceed =
-    cur.type === "multi" ? multiSel.length > 0 :
-    cur.type === "text" ? textVal.trim().length > 0 :
-    cur.type === "rating" ? rating > 0 :
-    !!answers[cur.id];
+    cur.type === "multi"
+      ? multiSel.length > 0 && (!otherRequired || otherText.trim().length > 0)
+      : cur.type === "text"
+      ? textVal.trim().length > 0
+      : cur.type === "rating"
+      ? rating > 0
+      : !!answers[cur.id] && (!otherRequired || otherText.trim().length > 0);
 
   const getValue = () => {
-    if (cur.type === "multi") return multiSel.length > 0 ? multiSel.join("; ") : "";
+    if (cur.type === "multi") {
+      const base = multiSel.filter(o => o !== OTHER_OPTION);
+      const parts = multiOtherSelected && otherText.trim()
+        ? [...base, `Other: ${otherText.trim()}`]
+        : base;
+      return parts.length > 0 ? parts.join("; ") : "";
+    }
     if (cur.type === "text") return textVal.trim();
     if (cur.type === "rating") return rating > 0 ? String(rating) : "";
+    if (singleOtherSelected && otherText.trim()) return `Other: ${otherText.trim()}`;
     return answers[cur.id] || "";
   };
 
@@ -45,7 +66,7 @@ export default function App() {
     if (!val) return;
     const updated = { ...answers, [cur.id]: val };
     setAnswers(updated);
-    setMultiSel([]); setTextVal(""); setRating(0); setHover(0);
+    setMultiSel([]); setTextVal(""); setRating(0); setHover(0); setOtherText("");
     if (step < STEPS.length - 1) setStep(s => s + 1);
     else runAI(updated);
   };
@@ -54,9 +75,10 @@ export default function App() {
     if (step === 0) return;
     const prev = STEPS[step - 1];
     const prevVal = answers[prev.id] || "";
-    if (prev.type === "multi") setMultiSel(prevVal ? prevVal.split("; ") : []);
+    if (prev.type === "multi") setMultiSel(prevVal ? prevVal.split("; ").map(v => v.startsWith("Other: ") ? OTHER_OPTION : v) : []);
     else if (prev.type === "text") setTextVal(prevVal);
     else if (prev.type === "rating") setRating(prevVal ? parseInt(prevVal) : 0);
+    setOtherText("");
     setStep(s => s - 1);
   };
 
@@ -92,7 +114,7 @@ export default function App() {
         }
       }
       setReport(full);
-      sendResultEmail(localStorage.getItem("paid_email"), full);
+      sendResultEmail(localStorage.getItem("paid_email") || localStorage.getItem("lead_email"), full);
     } catch {
       setError("Something went wrong. Please try again.");
       setPhase("quiz");
@@ -104,21 +126,82 @@ export default function App() {
 
   const reset = () => {
     setPhase("landing"); setStep(0); setAnswers({});
-    setMultiSel([]); setTextVal(""); setRating(0);
+    setMultiSel([]); setTextVal(""); setRating(0); setOtherText("");
     setStreamed(""); setReport(""); setError("");
+  };
+
+  const handleLeadSubmit = ({ name, email }) => {
+    setUserName(name);
+    setPhase("quiz");
   };
 
   return (
     <div>
       {phase === "landing" && (
         <LandingPage onStart={() => {
-          if (!paid) { setPhase("payment"); return; }
-          setPhase("quiz");
+          if (localStorage.getItem("lead_email")) {
+            if (!paid) { setPhase("payment"); return; }
+            setPhase("quiz");
+          } else {
+            setPhase("lead");
+          }
         }} />
       )}
 
+      {phase === "lead" && (
+        <LeadGate onSubmit={handleLeadSubmit} />
+      )}
+
+      {phase === "quiz" && !paid && (
+        <QuizStep
+          step={step}
+          answers={answers}
+          multiSel={multiSel}
+          textVal={textVal}
+          otherText={otherText}
+          rating={rating}
+          hover={hover}
+          error={error}
+          canProceed={canProceed}
+          userName={userName}
+          onSingle={handleSingle}
+          onToggleMulti={toggleMulti}
+          onTextChange={setTextVal}
+          onOtherText={setOtherText}
+          onRating={setRating}
+          onHover={setHover}
+          onHoverLeave={() => setHover(0)}
+          onNext={() => {
+            if (step < STEPS.length - 1) {
+              handleNext();
+            } else {
+              // Save final answers then show free summary
+              const val = getValue();
+              if (!val) return;
+              const updated = { ...answers, [cur.id]: val };
+              setAnswers(updated);
+              setMultiSel([]); setTextVal(""); setRating(0); setHover(0); setOtherText("");
+              setPhase("free_summary");
+            }
+          }}
+          onBack={handleBack}
+        />
+      )}
+
+      {phase === "free_summary" && (
+        <FreeSummary
+          answers={answers}
+          userName={userName}
+          onPay={() => setPhase("payment")}
+          onReset={reset}
+        />
+      )}
+
       {phase === "payment" && (
-        <PaymentGate onSuccess={() => { setPaid(true); setPhase("quiz"); }} />
+        <PaymentGate onSuccess={() => {
+          setPaid(true);
+          runAI(answers);
+        }} />
       )}
 
       {phase === "quiz" && paid && (
@@ -127,13 +210,16 @@ export default function App() {
           answers={answers}
           multiSel={multiSel}
           textVal={textVal}
+          otherText={otherText}
           rating={rating}
           hover={hover}
           error={error}
           canProceed={canProceed}
+          userName={userName}
           onSingle={handleSingle}
           onToggleMulti={toggleMulti}
           onTextChange={setTextVal}
+          onOtherText={setOtherText}
           onRating={setRating}
           onHover={setHover}
           onHoverLeave={() => setHover(0)}
@@ -149,6 +235,7 @@ export default function App() {
           sections={sections}
           done={done}
           streamed={streamed}
+          userName={userName}
           onReset={reset}
         />
       )}

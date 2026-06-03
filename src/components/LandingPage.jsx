@@ -2,32 +2,32 @@ export default function LandingPage({ onStart }) {
   return (
     <div className="land">
       <nav className="land-nav">
-        <div className="land-logo">Healthcare<span>Income</span> Navigator</div>
-        <span className="land-tag">For African Healthcare Professionals</span>
+        <div className="land-logo">Your<span>Clinical</span>Currency</div>
+        <span className="land-tag">Turn Your Healthcare Expertise Into Income, Impact, and Opportunity</span>
       </nav>
       <div className="land-hero">
         <div>
-          <div className="land-eyebrow">A career intelligence tool</div>
+          <div className="land-eyebrow">A career intelligence tool for African healthcare professionals</div>
           <h1 className="land-h1">
-            Discover ethical, realistic<br />
-            income paths built<br />
-            for <em>your profession.</em>
+            Your clinical knowledge<br />
+            is worth more than<br />
+            <em>your salary suggests.</em>
           </h1>
           <p className="land-body">
-            Helping Nigerian and African healthcare professionals find the fastest, most suitable paths to additional income, remote work, digital products, and scalable healthcare businesses — based on their actual specialty, personality, and schedule.
+            Most Nigerian healthcare professionals are sitting on untapped income potential they have never been shown how to access. Your Clinical Currency changes that — with a personalised, specialty-specific blueprint built from 25 questions about who you are, how you work, and what you want.
           </p>
           <button className="land-cta" onClick={onStart}>
-            Build My Income Navigator →
+            Discover My Clinical Currency →
           </button>
-          <span className="land-cta-note">28 questions · 10 minutes · Fully personalised to your profession and goals</span>
+          <span className="land-cta-note">Free 25-question assessment · Personalised blueprint · Results in under 10 minutes</span>
         </div>
         <div className="land-panel">
-          <div className="land-panel-title">What your report covers</div>
+          <div className="land-panel-title">Your full paid blueprint covers</div>
           {[
             {n:"01",t:"Your Clinical Edge",d:"The specific, monetisable intersection of your specialty and skills"},
             {n:"02",t:"Your Opportunity Map",d:"Clinical, non-clinical, educational, and digital income paths — including hidden ones"},
-            {n:"03",t:"Personality-Fit Model",d:"One income architecture matched to how you actually work"},
-            {n:"04",t:"Realistic Timelines",d:"Honest time-to-income estimates, not optimistic promises"},
+            {n:"03",t:"Personality-Fit Income Model",d:"One income architecture matched to how you actually work"},
+            {n:"04",t:"Realistic Income Timelines",d:"Honest time-to-income estimates, not optimistic promises"},
             {n:"05",t:"30-Day Roadmap",d:"Week-by-week tasks built around your clinical schedule"},
             {n:"06",t:"Income Trajectory",d:"Conservative and ambitious projections at 3, 6, and 12 months"},
           ].map(f => (
@@ -45,7 +45,7 @@ export default function LandingPage({ onStart }) {
         {[
           {icon:"🏥",t:"Your salary was not designed to be enough",d:"Government salaries have not kept pace with Nigerian inflation. Private sector earnings vary wildly. Most healthcare professionals are quietly building alternative income — or trying to."},
           {icon:"🔍",t:"Generic advice does not fit clinical careers",d:"Most income tools suggest freelancing or dropshipping. They do not understand licensing constraints, clinical time pressures, MDCN ethics, or the specific skills that come with a healthcare degree."},
-          {icon:"🗺️",t:"Nobody has mapped the full picture",d:"From medical virtual assistance to utilisation review, prior authorisation, and health tech operations — there are dozens of income paths most Nigerian healthcare professionals have never heard of."},
+          {icon:"🗺️",t:"Nobody has mapped the full picture for you",d:"From medical virtual assistance to utilisation review, prior authorisation, and health tech operations — there are dozens of income paths most Nigerian healthcare professionals have never heard of."},
         ].map(p => (
           <div key={p.t} className="prob-item">
             <div className="prob-icon">{p.icon}</div>

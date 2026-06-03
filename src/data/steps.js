@@ -46,6 +46,7 @@ export const STEPS = [
     type: "single",
     question: "What best describes your current work situation?",
     hint: "This affects which income paths are immediately accessible to you.",
+    hasOther: true,
     options: [
       "Full-time employed in a public hospital or teaching hospital",
       "Full-time employed in a private hospital or clinic",
@@ -85,6 +86,7 @@ export const STEPS = [
     type: "multi",
     question: "Outside of direct patient care, what else are you genuinely skilled at?",
     hint: "Select everything that honestly applies. These create unexpected and sometimes more profitable income paths.",
+    hasOther: true,
     options: [
       "Writing — long-form articles, reports, clinical documentation",
       "Copywriting or persuasive writing",
@@ -114,6 +116,7 @@ export const STEPS = [
     type: "multi",
     question: "Which digital tools or technology areas do you have working knowledge of?",
     hint: "Even basic familiarity counts. This reveals healthcare-specific digital income paths.",
+    hasOther: true,
     options: [
       "Microsoft Office or Google Workspace",
       "Electronic Medical Records — any EMR or EHR system",
@@ -169,6 +172,7 @@ export const STEPS = [
     type: "single",
     question: "Which of these best describes how you naturally communicate and show up?",
     hint: "Think about when you are at your best — not who you are trying to become.",
+    hasOther: true,
     options: [
       "I am naturally engaging and expressive — I light up in front of people or a camera",
       "I am warm and compelling one-on-one, but not a natural group performer",
@@ -254,6 +258,7 @@ export const STEPS = [
     type: "multi",
     question: "What type of income are you most interested in building?",
     hint: "Select all that genuinely appeal to you. These produce very different recommendations.",
+    hasOther: true,
     options: [
       "Active local income — earning more within Nigeria through services or teaching",
       "Remote income — working with clients or companies outside Nigeria, paid in foreign currency",
@@ -315,6 +320,7 @@ export const STEPS = [
     type: "multi",
     question: "Which platforms do you already have a presence on — even a dormant account counts?",
     hint: "Select every platform where you have ever posted or have an account.",
+    hasOther: true,
     options: [
       "Instagram",
       "LinkedIn",
@@ -336,6 +342,7 @@ export const STEPS = [
     type: "multi",
     question: "Have you ever attempted any of the following? Select everything you have tried — even if it did not work.",
     hint: "Failed attempts are data, not failure. What you tried and abandoned tells us a lot.",
+    hasOther: true,
     options: [
       "Creating and posting health content on social media",
       "Offering private consultations or home visits for pay",
