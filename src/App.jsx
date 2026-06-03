@@ -140,7 +140,6 @@ export default function App() {
       {phase === "landing" && (
         <LandingPage onStart={() => {
           if (localStorage.getItem("lead_email")) {
-            if (!paid) { setPhase("payment"); return; }
             setPhase("quiz");
           } else {
             setPhase("lead");
@@ -152,7 +151,7 @@ export default function App() {
         <LeadGate onSubmit={handleLeadSubmit} />
       )}
 
-      {phase === "quiz" && !paid && (
+      {phase === "quiz" && (
         <QuizStep
           step={step}
           answers={answers}
