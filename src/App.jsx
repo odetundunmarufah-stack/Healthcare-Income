@@ -68,7 +68,7 @@ export default function App() {
     setAnswers(updated);
     setMultiSel([]); setTextVal(""); setRating(0); setHover(0); setOtherText("");
     if (step < STEPS.length - 1) setStep(s => s + 1);
-    else runAI(updated);
+    else setPhase("free_summary");
   };
 
   const handleBack = () => {
@@ -170,19 +170,7 @@ export default function App() {
           onRating={setRating}
           onHover={setHover}
           onHoverLeave={() => setHover(0)}
-          onNext={() => {
-            if (step < STEPS.length - 1) {
-              handleNext();
-            } else {
-              // Save final answers then show free summary
-              const val = getValue();
-              if (!val) return;
-              const updated = { ...answers, [cur.id]: val };
-              setAnswers(updated);
-              setMultiSel([]); setTextVal(""); setRating(0); setHover(0); setOtherText("");
-              setPhase("free_summary");
-            }
-          }}
+          onNext={handleNext}
           onBack={handleBack}
         />
       )}
@@ -201,30 +189,6 @@ export default function App() {
           setPaid(true);
           runAI(answers);
         }} />
-      )}
-
-      {phase === "quiz" && paid && (
-        <QuizStep
-          step={step}
-          answers={answers}
-          multiSel={multiSel}
-          textVal={textVal}
-          otherText={otherText}
-          rating={rating}
-          hover={hover}
-          error={error}
-          canProceed={canProceed}
-          userName={userName}
-          onSingle={handleSingle}
-          onToggleMulti={toggleMulti}
-          onTextChange={setTextVal}
-          onOtherText={setOtherText}
-          onRating={setRating}
-          onHover={setHover}
-          onHoverLeave={() => setHover(0)}
-          onNext={handleNext}
-          onBack={handleBack}
-        />
       )}
 
       {phase === "loading" && <LoadingScreen />}
