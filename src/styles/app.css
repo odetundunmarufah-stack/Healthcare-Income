@@ -2,9 +2,9 @@
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --forest:#0f4a3a; --fm:#1a6b5a; --fp:rgba(15,74,58,0.08); --fb:rgba(15,74,58,0.16);
-  --ink:#0a1a14; --paper:#f7f9f7; --wh:#fff;
-  --tx:#1a2e26; --mu:#5a7a6a; --lb:rgba(15,74,58,0.12); --ac:#c8a84b;
+  --forest:#0d1b3e; --fm:#1a2f6b; --fp:rgba(13,27,62,0.08); --fb:rgba(13,27,62,0.16);
+  --ink:#0a0f2e; --paper:#f4f6fb; --wh:#fff;
+  --tx:#0d1b3e; --mu:#4a5a8a; --lb:rgba(13,27,62,0.12); --ac:#c8a030;
 }
 body{background:var(--paper);font-family:'DM Sans',sans-serif;color:var(--tx);-webkit-font-smoothing:antialiased;}
 

@@ -18,7 +18,7 @@
 // never throws on report completion.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const WEBHOOK_URL = "https://hooks.zapier.com/hooks/catch/REPLACE_WITH_YOUR_WEBHOOK";
+const WEBHOOK_URL = "https://hooks.zapier.com/hooks/catch/27826834/4bfsj5y/";
 
 export const sendResultEmail = async (email, report) => {
   if (!email || !report) return;

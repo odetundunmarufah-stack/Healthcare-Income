@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 // ─── Replace with your live/test public key from dashboard.paystack.com ───────
-const PAYSTACK_PUBLIC_KEY = "pk_test_6985353ebd37ce77f7813eecbffd52b1065114ad";
+const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
 const AMOUNT_KOBO = 500000; // ₦5,000 × 100
 
 export default function PaymentGate({ onSuccess }) {
