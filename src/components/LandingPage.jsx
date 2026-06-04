@@ -41,6 +41,23 @@ export default function LandingPage({ onStart }) {
           ))}
         </div>
       </div>
+      <div className="land-how">
+        <div className="land-how-title">How It Works</div>
+        <h2 className="land-how-h">Get Your Blueprint in 3 Simple Steps</h2>
+        <div className="land-steps">
+          {[
+            {n:"1",t:"Take the Free Assessment",d:"Answer 25 questions about your profession, skills, personality, and goals. Takes under 10 minutes."},
+            {n:"2",t:"Get Your Free Profile",d:"Instantly see your top income categories, key strength, and biggest blocker — at no cost."},
+            {n:"3",t:"Unlock Your Full Blueprint",d:"Pay ₦5,000 to unlock your complete 13-section personalised report with 30-day action plan."},
+          ].map(s => (
+            <div key={s.n} className="land-step">
+              <div className="land-step-num">{s.n}</div>
+              <h4>{s.t}</h4>
+              <p>{s.d}</p>
+            </div>
+          ))}
+        </div>
+      </div>
       <div className="land-problem">
         {[
           {icon:"🏥",t:"Your salary was not designed to be enough",d:"Government salaries have not kept pace with Nigerian inflation. Private sector earnings vary wildly. Most healthcare professionals are quietly building alternative income — or trying to."},
