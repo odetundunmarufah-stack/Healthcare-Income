@@ -61,7 +61,7 @@ export default function ResultsPage({ sections, done, streamed, onReset }) {
               </div>
               <a
                 className="btn-whatsapp"
-                href="https://chat.whatsapp.com/YOUR_GROUP_LINK"
+                href="https://chat.whatsapp.com/KqhTYdiG4LjF9IrxPRWnD2"
                 target="_blank"
                 rel="noopener noreferrer"
               >

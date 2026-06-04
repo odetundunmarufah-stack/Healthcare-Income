@@ -4,7 +4,7 @@ import { useState } from "react";
 const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
 const AMOUNT_KOBO = 500000; // ₦5,000 × 100
 
-export default function PaymentGate({ onSuccess }) {
+export default function PaymentGate({ onSuccess, selectedPath }) {
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -48,7 +48,7 @@ export default function PaymentGate({ onSuccess }) {
       <div className="pg-card">
         <div className="pg-logo">Your<span>Clinical</span>Currency</div>
         <div className="pg-badge">One-time access</div>
-        <h2 className="pg-title">Unlock Your Personalised Report</h2>
+        <h2 className="pg-title">{selectedPath ? `Unlock Your ${selectedPath.title} Blueprint` : "Unlock Your Full Blueprint"}</h2>
         <p className="pg-body">
           Get a fully personalised income blueprint built from 25 data points about your profession, personality, goals, and location. Pay once — access yours forever.
         </p>

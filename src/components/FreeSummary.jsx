@@ -1,172 +1,276 @@
-// FreeSummary — generated instantly from quiz answers, NO API call needed
+import { useMemo, useState } from "react";
 
-import { useMemo } from "react";
-
-const getIncomeCategories = (answers) => {
-  const cats = [];
+// ─── INCOME READINESS SCORE ───────────────────────────────────────────────────
+const getScore = (answers) => {
+  let score = 40; // base
   const skills = answers.non_clinical_skills || "";
-  const type = answers.income_type_preference || "";
+  const tech = parseInt(answers.tech_comfort) || 0;
+  const consistency = parseInt(answers.consistency) || 0;
+  const venture = answers.venture_background || "";
+  const energy = answers.energy_type || "";
+  const visibility = answers.visibility_preference || "";
+
+  if (skills.length > 30) score += 10;
+  if (tech >= 7) score += 8;
+  else if (tech >= 4) score += 4;
+  if (consistency >= 7) score += 8;
+  else if (consistency >= 4) score += 4;
+  if (venture.length > 20 && !venture.toLowerCase().includes("nothing") && !venture.toLowerCase().includes("none")) score += 10;
+  if (energy.includes("teacher") || energy.includes("engaging")) score += 6;
+  if (visibility.includes("Fully visible") || visibility.includes("Professionally")) score += 4;
+  if (answers.income_type_preference?.includes("Remote")) score += 4;
+
+  return Math.min(score, 97);
+};
+
+// ─── ARCHETYPE ────────────────────────────────────────────────────────────────
+const getArchetype = (answers) => {
+  const energy = answers.energy_type || "";
+  const visibility = answers.visibility_preference || "";
+  const skills = answers.non_clinical_skills || "";
+  const content = answers.content_comfort || "";
+  const incomeType = answers.income_type_preference || "";
+
+  if (incomeType.includes("Remote") || incomeType.includes("dollar")) {
+    return {
+      name: "The Global Clinical Asset",
+      tagline: "Your expertise has a market far beyond Nigeria — and you have not tapped it yet.",
+      description: "Your profile points strongly toward remote and international income. There are dollar-denominated roles built specifically for clinicians with your background that most Nigerian healthcare professionals have never heard of. You are closer to your first USD income than you think."
+    };
+  }
+  if (energy.includes("teacher") || content.includes("courses") || content.includes("Writing")) {
+    return {
+      name: "The Knowledge Monetiser",
+      tagline: "You are sitting on a curriculum that people will pay to access.",
+      description: "You have the rare combination of clinical authority and the ability to communicate it clearly. Nigerian patients, students, and professionals are actively searching for what you know — but they cannot find it in a form they can access and afford. That gap is your business."
+    };
+  }
+  if (visibility.includes("faceless") || visibility.includes("brand")) {
+    return {
+      name: "The Quiet Authority",
+      tagline: "You do not need to be the face. You need to be the brain behind it.",
+      description: "Your preference for staying behind the scenes is not a limitation — it is a strategy. Some of the most profitable healthcare income paths require zero personal visibility. Your profile shows exactly which ones fit your personality and your specialty."
+    };
+  }
+  if (energy.includes("connector") || energy.includes("community")) {
+    return {
+      name: "The Clinical Community Builder",
+      tagline: "Your network is an untapped asset. Your community is your business model.",
+      description: "You have a natural ability to bring people together and create belonging. In the healthcare income space, this translates into some of the most scalable and sustainable business models available — ones that grow without requiring more of your personal time."
+    };
+  }
+  if (skills.includes("consulting") || skills.includes("Sales")) {
+    return {
+      name: "The Clinical Strategist",
+      tagline: "Organisations will pay serious money for what you see in five minutes.",
+      description: "Your combination of clinical knowledge and strategic thinking puts you in a rare category. Healthcare organisations, startups, and corporates need people who understand both medicine and business. Your profile shows several high-ticket paths that leverage exactly this."
+    };
+  }
+  return {
+    name: "The Underutilised Specialist",
+    tagline: "Your clinical depth is your greatest untapped asset.",
+    description: "You have built expertise that most people spend years trying to acquire. The challenge is not your capability — it is that nobody has shown you the specific paths that translate your particular combination of skills, specialty, and personality into income. That changes now."
+  };
+};
+
+// ─── THREE PATHS ──────────────────────────────────────────────────────────────
+const getPaths = (answers) => {
+  const profession = answers.profession || "";
+  const specialty = answers.specialty || "your specialty";
+  const incomeType = answers.income_type_preference || "";
   const visibility = answers.visibility_preference || "";
   const content = answers.content_comfort || "";
-  const profession = answers.profession || "";
-  const specialty = answers.specialty || "";
+  const energy = answers.energy_type || "";
 
-  if (type.includes("Remote") || type.includes("foreign currency")) {
-    cats.push({ icon: "🟢", label: "Remote & Dollar Income", reason: `Your ${specialty || profession} background qualifies you for remote clinical roles paying in USD or GBP — medical writing, virtual assistance, utilisation review, and prior authorisation.` });
-  }
-  if (skills.includes("Teaching") || skills.includes("writing") || content.includes("Writing")) {
-    cats.push({ icon: "🟢", label: "Health Content & Education", reason: `Your ability to explain complex clinical concepts clearly is a rare and monetisable skill. Nigerian audiences are actively paying for trusted health education from credentialed professionals.` });
-  }
-  if (type.includes("passive") || type.includes("Passive")) {
-    cats.push({ icon: "🟢", label: "Digital Products & Passive Income", reason: `Based on your goals, digital products — e-books, templates, recorded courses — can generate income from your clinical knowledge without adding to your workload.` });
-  }
-  if (visibility.includes("Fully visible") || visibility.includes("Professionally visible")) {
-    cats.push({ icon: "🟢", label: "Consulting & Private Practice", reason: `Your comfort with visibility means you can build a recognisable personal brand that converts directly into premium consultation income.` });
-  }
-  if (type.includes("Business") || type.includes("scalable")) {
-    cats.push({ icon: "🟢", label: "Healthcare Business & Platforms", reason: `Your interest in ownership positions you to build something that scales beyond your personal hours — a clinic, platform, or healthcare product business.` });
-  }
-  if (skills.includes("Social media") || skills.includes("Graphic design")) {
-    cats.push({ icon: "🟢", label: "Digital Marketing & Brand Consulting", reason: `Your non-clinical digital skills open income paths that most healthcare professionals overlook entirely — including working with health brands, pharma, and wellness businesses.` });
-  }
+  const allPaths = [
+    {
+      id: "remote",
+      icon: "🌍",
+      label: "The Remote Income Path",
+      teaser: `There is a specific dollar-denominated role that Nigerian ${profession.includes("Doctor") ? "doctors" : profession.includes("Nurse") ? "nurses" : profession.includes("Pharmacist") ? "pharmacists" : "healthcare professionals"} with your background are being hired for remotely right now — no relocation required. Most people in your position have never heard of it. Your full blueprint reveals exactly what it is, how to qualify, and how to land your first client within 90 days.`,
+      fit: incomeType.includes("Remote") || incomeType.includes("dollar") ? "high" : "medium"
+    },
+    {
+      id: "education",
+      icon: "🎓",
+      label: "The Clinical Educator Path",
+      teaser: `Your ${specialty} knowledge is a curriculum that Nigerian patients, students, and professionals will pay to access — but only when it is packaged correctly. This path reveals the exact format, platform, and first offer that fits your personality and schedule. The first income from this path does not require an existing audience.`,
+      fit: content.includes("Writing") || content.includes("courses") || energy.includes("teacher") ? "high" : "medium"
+    },
+    {
+      id: "consulting",
+      icon: "💼",
+      label: "The Private Consulting Path",
+      teaser: `There is a direct, no-audience-required path to earning ₦150,000–₦500,000 per month from your ${specialty} expertise — through private consultations, advisory work, or specialist services. This path requires no platform, no content, and no existing followers. It starts with one conversation. Your full blueprint shows you exactly how to price it, position it, and get your first paying client.`,
+      fit: visibility.includes("visible") || energy.includes("one-on-one") ? "high" : "medium"
+    }
+  ];
 
-  // Always ensure at least 3
-  if (cats.length < 3) {
-    cats.push({ icon: "🟢", label: "Private Consultations & Advisory", reason: `Your clinical training gives you the authority to offer paid one-on-one advisory services to patients and organisations who cannot access specialist care affordably.` });
-  }
-  if (cats.length < 3) {
-    cats.push({ icon: "🟢", label: "Clinical Training & Workshops", reason: `Healthcare professionals and students are actively seeking practical clinical education. Your experience qualifies you to teach and earn from it.` });
-  }
-
-  return cats.slice(0, 3);
+  // Sort by fit
+  return allPaths.sort((a, b) => (a.fit === "high" ? -1 : 1));
 };
 
-const getStrength = (answers) => {
-  const specialty = answers.specialty || "your specialty";
-  const experience = answers.experience_years || "";
-  const skills = answers.non_clinical_skills || "";
-  const writing = parseInt(answers.writing_strength) || 5;
-  const speaking = parseInt(answers.speaking_confidence) || 5;
-
-  if (writing >= 7) return `Your strongest asset is your ability to communicate clinical knowledge in writing. Very few healthcare professionals in Nigeria combine ${specialty} expertise with genuine writing fluency — this is the intersection where premium income lives. Content, medical writing, and digital education are paths you can enter faster than most.`;
-  if (speaking >= 7) return `Your strongest asset is your ability to speak and present with confidence. In a market where most clinicians stay silent, your willingness to be visible and vocal with ${specialty} expertise creates immediate authority. Workshops, consulting, and high-ticket advisory are your fastest paths.`;
-  if (skills.includes("Teaching")) return `Your strongest asset is your teaching instinct. The ability to simplify complex ${specialty} concepts for non-clinical audiences is rare and valuable. Nigerian patients, students, and corporate professionals are willing to pay for exactly this kind of accessible expert guidance.`;
-  return `Your strongest asset is your clinical credibility. With ${experience ? experience.split("—")[0].trim() : "significant"} years of ${specialty} experience, you carry a level of authority that no amount of marketing can manufacture. In a market flooded with unqualified health voices, your credentials are your greatest competitive advantage.`;
-};
-
-const getBlocker = (answers) => {
-  const blocker = answers.biggest_blocker || "";
-  const judgment = answers.colleague_judgment || "";
-  const selfBelief = parseInt(answers.self_belief) || 5;
-  const consistency = parseInt(answers.consistency) || 5;
-
-  if (judgment.includes("Significantly")) return `Your biggest blocker is the weight of what your colleagues might think. This is the single most reported barrier among Nigerian healthcare professionals, and it is keeping more talented clinicians stuck than any skills gap or time constraint ever could. The full blueprint addresses this directly with a practical, MDCN-aware framework for building income without professional exposure.`;
-  if (selfBelief <= 4) return `Your biggest blocker is self-doubt — specifically, the fear that your knowledge is not worth paying for. This is imposter syndrome, and it is almost universal among high-achieving clinicians. The painful irony is that the more qualified you are, the more you question your right to charge. Your full blueprint reframes this completely with specific pricing psychology built for the Nigerian healthcare market.`;
-  if (consistency <= 4) return `Your biggest blocker is momentum — you start strong but struggle to sustain the effort long enough to see results. This is not a character flaw. It is a system problem. Your full blueprint is specifically designed around sprint-based milestones rather than daily habits, so your progress does not depend on willpower alone.`;
-  if (blocker.toLowerCase().includes("time") || blocker.toLowerCase().includes("schedule")) return `Your biggest blocker is time — or more precisely, the belief that you do not have enough of it. Your full blueprint is built around your exact available hours and shows you precisely which income paths require the least time to generate the most income for your specific profile.`;
-  return `Your biggest blocker is not knowing where to start — a paralysis that comes not from lack of ability but from having too many options and no clear, personalised direction. Your full blueprint solves this with a single recommended starting point and a week-by-week plan built specifically around your specialty, schedule, and personality.`;
-};
-
+// ─── COMPONENT ────────────────────────────────────────────────────────────────
 export default function FreeSummary({ answers, userName, onPay, onReset }) {
-  const categories = useMemo(() => getIncomeCategories(answers), [answers]);
-  const strength = useMemo(() => getStrength(answers), [answers]);
-  const blocker = useMemo(() => getBlocker(answers), [answers]);
+  const [selectedPath, setSelectedPath] = useState(null);
+  const score = useMemo(() => getScore(answers), [answers]);
+  const archetype = useMemo(() => getArchetype(answers), [answers]);
+  const paths = useMemo(() => getPaths(answers), [answers]);
 
-  const profession = answers.profession || "Healthcare Professional";
-  const specialty = answers.specialty || "";
-  const location = answers.location || "";
-  const experience = answers.experience_years || "";
+  const scoreColor = score >= 75 ? "#1a6b3a" : score >= 55 ? "#c8a030" : "#8b3a3a";
+  const scoreLabel = score >= 75 ? "High Readiness" : score >= 55 ? "Moderate Readiness" : "Building Phase";
 
-  const profileSummary = `You are a ${specialty ? specialty + " " : ""}${profession}${location ? " based in " + location : ""}${experience ? " with " + experience.split("—")[0].trim() + " of clinical experience" : ""}. Based on your 25 answers, our assessment engine has built a detailed picture of your income readiness — your skills, your personality, your goals, and what is genuinely holding you back. What follows is your free profile summary. Your full blueprint is one step away.`;
+  const handlePathSelect = (pathId) => setSelectedPath(pathId);
 
   return (
     <div className="fs-wrap">
+      {/* ── TOP ── */}
       <div className="fs-top">
         <div className="fs-logo">Your<span>Clinical</span>Currency</div>
         <div className="fs-badge">Your Free Profile Summary</div>
         <h1 className="fs-title">
-          {userName ? `${userName}, here is what we found.` : "Here is what we found."}
+          {userName ? `${userName.split(" ")[0]}, here is what your profile reveals.` : "Here is what your profile reveals."}
         </h1>
         <p className="fs-subtitle">
-          Based on your 25 answers, our assessment engine has identified your clinical income profile. This is your free summary — your full blueprint is one step away.
+          Based on your answers, our assessment engine has built a picture of your income readiness, your natural strengths, and the paths most likely to work for you specifically.
         </p>
       </div>
 
       <div className="fs-card">
         <div className="fs-content">
 
+          {/* ── SCORE ── */}
           <div className="fs-section">
-            <div className="fs-section-title">YOUR CAREER PROFILE SUMMARY</div>
-            <div className="fs-section-body">
-              <p className="fs-para">{profileSummary}</p>
+            <div className="fs-section-title">YOUR INCOME READINESS SCORE</div>
+            <div className="fs-score-row">
+              <div className="fs-score-circle" style={{ borderColor: scoreColor }}>
+                <span className="fs-score-num" style={{ color: scoreColor }}>{score}</span>
+                <span className="fs-score-max">/100</span>
+              </div>
+              <div className="fs-score-info">
+                <div className="fs-score-label" style={{ color: scoreColor }}>{scoreLabel}</div>
+                <p className="fs-score-desc">
+                  {score >= 75
+                    ? "Your profile shows strong readiness — existing skills, the right mindset, and clear goals. The main thing missing is a specific, personalised plan. That is what your blueprint delivers."
+                    : score >= 55
+                    ? "You have solid foundations to build from. A few targeted moves — matched to your specific profile — will unlock momentum faster than you expect."
+                    : "You are earlier in the journey, and that is completely fine. Your blueprint is designed specifically for this stage — clear, low-cost, and calibrated to where you actually are."
+                  }
+                </p>
+              </div>
             </div>
           </div>
 
+          {/* ── ARCHETYPE ── */}
           <div className="fs-section">
-            <div className="fs-section-title">YOUR TOP 3 INCOME CATEGORIES</div>
-            <div className="fs-section-body">
-              {categories.map((cat, i) => (
-                <div key={i} className="fs-bullet">
-                  <span className="fs-bullet-dot">🟢</span>
-                  <span><strong>{cat.label}</strong> — {cat.reason}</span>
-                </div>
-              ))}
+            <div className="fs-section-title">YOUR CLINICAL CURRENCY ARCHETYPE</div>
+            <div className="fs-archetype">
+              <div className="fs-archetype-name">"{archetype.name}"</div>
+              <div className="fs-archetype-tagline">{archetype.tagline}</div>
+              <p className="fs-para">{archetype.description}</p>
             </div>
           </div>
 
+          {/* ── BLOCKER ── */}
           <div className="fs-section">
-            <div className="fs-section-title">YOUR KEY STRENGTH</div>
-            <div className="fs-section-body">
-              <p className="fs-para">{strength}</p>
-            </div>
-          </div>
-
-          <div className="fs-section">
-            <div className="fs-section-title">YOUR KEY BLOCKER</div>
-            <div className="fs-section-body">
-              <p className="fs-para">{blocker}</p>
+            <div className="fs-section-title">WHAT IS ACTUALLY HOLDING YOU BACK</div>
+            <div className="fs-blocker-box">
+              <p className="fs-para" style={{ color: "rgba(255,255,255,0.75)" }}>
+                {(() => {
+                  const blocker = answers.biggest_blocker || "";
+                  const consistency = parseInt(answers.consistency) || 5;
+                  if (blocker.toLowerCase().includes("time")) return "The real issue is not time — it is the absence of a system that works within the time you actually have. Your blueprint is built around your specific schedule, not an idealised version of it.";
+                  if (blocker.toLowerCase().includes("judg") || blocker.toLowerCase().includes("colleague")) return "The fear of professional judgment is quietly keeping more talented Nigerian clinicians stuck than any skills gap ever has. Your blueprint addresses this directly — including a specific MDCN-aware framework for building income without professional exposure.";
+                  if (blocker.toLowerCase().includes("start") || blocker.toLowerCase().includes("overwhelm")) return "The paralysis you feel is not a character flaw — it is what happens when you have too many options and no personalised direction. Your blueprint gives you one starting point, one first offer, and one 30-day plan. Nothing more.";
+                  if (blocker.toLowerCase().includes("pay") || blocker.toLowerCase().includes("worth") || blocker.toLowerCase().includes("confiden")) return "The doubt you feel about whether people will pay you is imposter syndrome — and it is almost universal among high-achieving clinicians. The painful irony is that the more qualified you are, the more you question your right to charge. Your blueprint breaks this pattern specifically.";
+                  if (consistency <= 4) return "You have started before and lost momentum. That is not a personality problem — it is a system problem. Your blueprint is designed around focused sprints and milestone-based progress, not daily habits that depend on willpower you may not always have.";
+                  return "Something specific is standing between you and the income you know you are capable of earning. Your blueprint names it clearly, addresses it practically, and gives you a route around it — not through motivation, but through a plan that fits your actual situation.";
+                })()}
+              </p>
             </div>
           </div>
 
         </div>
-      </div>
 
-      <div className="fs-paywall">
+        {/* ── PATH SELECTION ── */}
+        <div className="fs-paths-section">
+          <div className="fs-paths-header">
+            <div className="fs-section-title" style={{ color: "#fff", marginBottom: 6 }}>CHOOSE YOUR PRIMARY INCOME PATH</div>
+            <p className="fs-paths-sub">Your full blueprint concentrates on the path you select. Each path reveals a different set of opportunities, certifications, and a 30-day action plan specific to that direction.</p>
+          </div>
+
+          <div className="fs-paths">
+            {paths.map((path) => (
+              <div
+                key={path.id}
+                className={`fs-path${selectedPath === path.id ? " fs-path-sel" : ""}`}
+                onClick={() => handlePathSelect(path.id)}
+              >
+                <div className="fs-path-top">
+                  <span className="fs-path-icon">{path.icon}</span>
+                  <span className="fs-path-label">{path.label}</span>
+                  {path.fit === "high" && <span className="fs-path-badge">Best fit</span>}
+                  <span className="fs-path-check">{selectedPath === path.id ? "✓" : ""}</span>
+                </div>
+                <p className="fs-path-teaser">{path.teaser}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── PAYWALL ── */}
         <div className="fs-paywall-inner">
           <div className="fs-lock">🔒</div>
           <h2 className="fs-paywall-title">Your Full Clinical Currency Blueprint</h2>
           <p className="fs-paywall-body">
-            Your free summary shows you the categories. Your full blueprint shows you exactly what to do, how to start, how much to charge, and your precise 30-day action plan.
+            Your free summary shows you who you are and what is possible. Your full blueprint shows you exactly what to do, step by step, starting this week.
           </p>
 
           <div className="fs-what-you-get">
             <div className="fs-wg-title">What unlocks for ₦5,000:</div>
             {[
-              "🔬 Your Clinical Edge — exactly what makes your background uniquely monetisable",
-              "🗺️ Full Opportunity Map — all income paths ranked by fit and speed to income",
-              "🎯 Your Signature Offer — the one thing to start with and exactly how to price it",
-              "🎓 Skills & Certifications Roadmap — exactly what to learn and where to get certified",
-              "📅 30-Day Roadmap — week-by-week tasks built around your clinical schedule",
-              "📈 Income Trajectory — projections at 3, 6, and 12 months",
-              "🧠 Mindset Audit — your specific blockers named and addressed with practical fixes",
+              "🔬 Your Clinical Edge — what makes your background uniquely monetisable right now",
+              "🗺️ Full Opportunity Map — every income path ranked by fit, speed, and income potential",
+              "🎯 Your Signature Offer — the one thing to sell first and exactly how to price it",
+              "🎓 Skills & Certifications Roadmap — what to learn, where to get certified, and what income it unlocks",
+              "📅 30-Day Roadmap — week by week tasks built around your actual schedule",
+              "📈 Income Trajectory — conservative and ambitious projections at 3, 6, and 12 months",
+              "🧠 Mindset Audit — your specific blockers named and dismantled with practical fixes",
             ].map((item, i) => (
               <div key={i} className="fs-wg-item">{item}</div>
             ))}
           </div>
 
           <div className="fs-bonuses">
-            <div className="fs-bonus-title">🎁 Bonuses included at no extra cost:</div>
+            <div className="fs-bonus-title">🎁 Included at no extra cost:</div>
             <div className="fs-bonus-item">✓ The First ₦100k Checklist — exactly what to do in 30 days</div>
             <div className="fs-bonus-item">✓ 30 Content Ideas tailored to your specialty</div>
-            <div className="fs-bonus-item">✓ Access to the Private Your Clinical Currency Community</div>
+            <div className="fs-bonus-item">✓ Access to the Your Clinical Currency WhatsApp Community</div>
+          </div>
+
+          <div className="fs-whatsapp-preview">
+            <div className="fs-wa-icon">💬</div>
+            <div>
+              <div className="fs-wa-title">The Your Clinical Currency Community</div>
+              <p className="fs-wa-desc">Your blueprint tells you what to do. The community makes sure you actually do it — with weekly check-ins, live Q&As, accountability partners, and a growing community of Nigerian healthcare professionals building income alongside you.</p>
+            </div>
           </div>
 
           <div className="fs-price-row">
-            <span className="fs-price-old">Regular price: ₦15,000</span>
+            <span className="fs-price-old">Regular: ₦15,000</span>
             <span className="fs-price-now">Launch price: ₦5,000</span>
           </div>
 
-          <button className="fs-pay-btn" onClick={onPay}>
+          {!selectedPath && (
+            <p className="fs-path-warning">⬆️ Select a career path above to unlock your blueprint</p>
+          )}
+
+          <button
+            className="fs-pay-btn"
+            onClick={() => selectedPath && onPay(selectedPath)}
+            disabled={!selectedPath}
+            style={{ opacity: selectedPath ? 1 : 0.4, cursor: selectedPath ? "pointer" : "not-allowed" }}
+          >
             Unlock My Full Blueprint — ₦5,000 →
           </button>
 

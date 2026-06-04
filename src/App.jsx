@@ -8,18 +8,58 @@ import FreeSummary from "./components/FreeSummary";
 import LoadingScreen from "./components/LoadingScreen";
 import ResultsPage from "./components/ResultsPage";
 import PaymentGate from "./components/PaymentGate";
-import { sendResultEmail } from "./utils/email";
 import { buildPrompt } from "./utils/buildPrompt";
 import "./styles/app.css";
+
+// ─── EMAILJS CONFIG ───────────────────────────────────────────────────────────
+const EMAILJS_SERVICE_ID = "service_skrb4zu";
+const EMAILJS_TEMPLATE_ID = "template_cp2v8ja";
+const EMAILJS_PUBLIC_KEY = "E5Ak4CU7HZlplLiGP";
+
+// ─── FORMSPREE LEAD CAPTURE ───────────────────────────────────────────────────
+const captureLead = async (name, email) => {
+  try {
+    await fetch("https://formspree.io/f/mrevgoyw", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, source: "quiz_start", timestamp: new Date().toISOString() }),
+    });
+  } catch {}
+};
+
+// ─── EMAILJS PDF DELIVERY ─────────────────────────────────────────────────────
+const sendReportEmail = async (name, email, reportText) => {
+  try {
+    // Load EmailJS dynamically
+    if (!window.emailjs) {
+      await new Promise((res, rej) => {
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js";
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+      window.emailjs.init(EMAILJS_PUBLIC_KEY);
+    }
+    // Send email with report as text (PDF generation via EmailJS template)
+    await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_name: name || "Healthcare Professional",
+      to_email: email,
+      report_preview: reportText.slice(0, 3000),
+      from_name: "Your Clinical Currency",
+    });
+  } catch (e) {
+    console.log("Email send failed:", e);
+  }
+};
 
 const OTHER_OPTION = "Other — please describe below";
 
 export default function App() {
-  const [paid, setPaid] = useState(() => localStorage.getItem("paid") === "true");
   const [userName, setUserName] = useState(() => localStorage.getItem("lead_name") || "");
   const [phase, setPhase] = useState("landing");
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
+  const [selectedPath, setSelectedPath] = useState(null);
   const [multiSel, setMultiSel] = useState([]);
   const [textVal, setTextVal] = useState("");
   const [otherText, setOtherText] = useState("");
@@ -82,7 +122,7 @@ export default function App() {
     setStep(s => s - 1);
   };
 
-  const runAI = async (final) => {
+  const runAI = async (final, path) => {
     setPhase("loading");
     setStreamed(""); setReport(""); setError("");
     const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
@@ -98,7 +138,7 @@ export default function App() {
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 4000, stream: true,
-          messages: [{ role: "user", content: buildPrompt(final) }],
+          messages: [{ role: "user", content: buildPrompt(final, path) }],
         }),
       });
       if (!res.ok) throw new Error();
@@ -120,10 +160,13 @@ export default function App() {
         }
       }
       setReport(full);
-      sendResultEmail(localStorage.getItem("paid_email") || localStorage.getItem("lead_email"), full);
+      // Send report email
+      const email = localStorage.getItem("paid_email") || localStorage.getItem("lead_email");
+      const name = localStorage.getItem("lead_name") || userName;
+      if (email) sendReportEmail(name, email, full);
     } catch {
-      setError("Something went wrong. Please try again.");
-      setPhase("quiz");
+      setError("Something went wrong generating your report. Please try again.");
+      setPhase("free_summary");
     }
   };
 
@@ -132,12 +175,16 @@ export default function App() {
 
   const reset = () => {
     setPhase("landing"); setStep(0); setAnswers({});
+    setSelectedPath(null);
     setMultiSel([]); setTextVal(""); setRating(0); setOtherText("");
     setStreamed(""); setReport(""); setError("");
   };
 
-  const handleLeadSubmit = ({ name, email }) => {
+  const handleLeadSubmit = async ({ name, email }) => {
     setUserName(name);
+    localStorage.setItem("lead_name", name);
+    localStorage.setItem("lead_email", email);
+    await captureLead(name, email);
     setPhase("quiz");
   };
 
@@ -185,16 +232,21 @@ export default function App() {
         <FreeSummary
           answers={answers}
           userName={userName}
-          onPay={() => setPhase("payment")}
+          onPay={(path) => {
+            setSelectedPath(path);
+            setPhase("payment");
+          }}
           onReset={reset}
         />
       )}
 
       {phase === "payment" && (
-        <PaymentGate onSuccess={() => {
-          setPaid(true);
-          runAI(answers);
-        }} />
+        <PaymentGate
+          selectedPath={selectedPath}
+          onSuccess={() => {
+            runAI(answers, selectedPath);
+          }}
+        />
       )}
 
       {phase === "loading" && <LoadingScreen />}
@@ -205,6 +257,7 @@ export default function App() {
           done={done}
           streamed={streamed}
           userName={userName}
+          selectedPath={selectedPath}
           onReset={reset}
         />
       )}
