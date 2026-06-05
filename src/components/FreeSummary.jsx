@@ -248,11 +248,35 @@ export default function FreeSummary({ answers, userName, onPay, onReset }) {
             <div className="fs-bonus-item">✓ Access to the Your Clinical Currency WhatsApp Community</div>
           </div>
 
-          <div className="fs-whatsapp-preview">
-            <div className="fs-wa-icon">💬</div>
-            <div>
-              <div className="fs-wa-title">The Your Clinical Currency Community</div>
-              <p className="fs-wa-desc">Your blueprint tells you what to do. The community makes sure you actually do it — with weekly check-ins, live Q&As, accountability partners, and a growing community of Nigerian healthcare professionals building income alongside you.</p>
+          {/* ── WHATSAPP COMMUNITY — just before pay button ── */}
+          <div className="fs-wa-banner">
+            <div className="fs-wa-banner-top">
+              <span className="fs-wa-banner-icon">💬</span>
+              <div>
+                <div className="fs-wa-banner-title">The Your Clinical Currency Community</div>
+                <div className="fs-wa-banner-sub">Included free with your blueprint</div>
+              </div>
+            </div>
+            <p className="fs-wa-banner-body">
+              Your blueprint tells you what to do. The hardest part of building income outside the hospital is not knowing — it is doing, consistently, while managing a clinical career.
+            </p>
+            <p className="fs-wa-banner-body" style={{ marginTop: 8 }}>
+              The Your Clinical Currency WhatsApp Community is where implementation happens. Weekly check-ins, live Q&As, accountability partners, income milestone support, and a growing group of Nigerian healthcare professionals building real income together.
+            </p>
+            <div className="fs-wa-banner-features">
+              {[
+                "📌 Weekly implementation check-ins",
+                "🎙️ Live Q&A sessions",
+                "🤝 Accountability partners who understand clinical life",
+                "📈 Income milestone tracking and celebration",
+                "💡 Platform growth and online presence tips",
+                "📂 Templates, resources, and opportunities shared weekly",
+              ].map((f, i) => (
+                <div key={i} className="fs-wa-banner-feature">{f}</div>
+              ))}
+            </div>
+            <div className="fs-wa-banner-cta">
+              Your report tells you what to do. The community makes sure you actually do it.
             </div>
           </div>
 

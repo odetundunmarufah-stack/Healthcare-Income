@@ -16,7 +16,14 @@ Focus 60-70% of your recommendations, roadmap, and certifications on this chosen
 ASSESSMENT ANSWERS:
 ${Object.entries(answers).map(([k, v]) => k + ": " + v).join("\n")}
 
-Generate EXACTLY these 13 sections using ## for each heading in UPPERCASE:
+Generate EXACTLY these 14 sections using ## for each heading in UPPERCASE:
+
+## YOUR OTHER TWO PATHS — A BRIEF OVERVIEW
+The user considered 3 income paths and chose one. Before diving deep into their chosen path, briefly acknowledge the other two. For each unchosen path write 2-3 sentences that:
+- Name what it involves at a high level
+- Give one specific example relevant to their specialty
+- Note why they might return to it later
+Keep this section warm and encouraging — not dismissive. Make them feel good about their choice while knowing the other doors remain open.
 
 ## YOUR CLINICAL EDGE
 Write 3 paragraphs like a mentor who has just reviewed this person's profile and is genuinely excited about what they see. Be specific to their specialty and experience. Name the exact gap in the Nigerian market that their background fills. End with one bold sentence: **The bottom line:** followed by the most important thing they need to hear.
