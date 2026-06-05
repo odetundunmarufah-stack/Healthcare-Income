@@ -166,7 +166,7 @@ export default function App() {
       if (email) sendReportEmail(name, email, full);
     } catch {
       setError("Something went wrong generating your report. Please try again.");
-      setPhase("free_summary");
+      setPhase("payment");
     }
   };
 

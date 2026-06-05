@@ -94,16 +94,21 @@ export default function QuizStep({
         {cur.type === "multi" && (
           <>
             <div className="opts">
-              {cur.options.map(o => (
-                <button
-                  key={o}
-                  className={`opt${multiSel.includes(o) ? " sel" : ""}`}
-                  onClick={() => onToggleMulti(o)}
-                >
-                  <span className="opt-ind opt-box">{multiSel.includes(o) ? "✓" : ""}</span>
-                  {o}
-                </button>
-              ))}
+              {cur.options.map(o => {
+                const isSelected = multiSel.includes(o);
+                const maxReached = cur.maxSelect && multiSel.length >= cur.maxSelect && !isSelected;
+                return (
+                  <button
+                    key={o}
+                    className={`opt${isSelected ? " sel" : ""}${maxReached ? " opt-disabled" : ""}`}
+                    onClick={() => !maxReached && onToggleMulti(o)}
+                    style={{ opacity: maxReached ? 0.4 : 1, cursor: maxReached ? "not-allowed" : "pointer" }}
+                  >
+                    <span className="opt-ind opt-box">{isSelected ? "✓" : ""}</span>
+                    {o}
+                  </button>
+                );
+              })}
               {cur.hasOther && (
                 <button
                   className={`opt${multiSel.includes(OTHER_OPTION) ? " sel" : ""}`}
@@ -115,7 +120,9 @@ export default function QuizStep({
               )}
             </div>
             {multiSel.length > 0 && (
-              <p className="sel-count">{multiSel.length} selected</p>
+              <p className="sel-count">
+                {multiSel.length} selected{cur.maxSelect ? ` (max ${cur.maxSelect})` : ""}
+              </p>
             )}
           </>
         )}
@@ -175,7 +182,7 @@ export default function QuizStep({
             <button className="q-back" onClick={onBack}>← Back</button>
           )}
           <button className="q-next" onClick={onNext} disabled={!canProceed}>
-            {step < STEPS.length - 1 ? "Continue →" : "Generate My Navigator →"}
+            {step < STEPS.length - 1 ? "Continue →" : "Generate My Clinical Currency →"}
           </button>
         </div>
       </div>

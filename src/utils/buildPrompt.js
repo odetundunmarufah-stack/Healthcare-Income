@@ -86,7 +86,7 @@ End the entire report with this exact closing:
 
 It is in a community of Nigerian healthcare professionals who are doing exactly what you are now planning to do.
 
-**Join the Your Clinical Currency WhatsApp Community — where implementation happens.**
+**Join the YCC Community — where implementation happens.**
 
 Weekly check-ins, live Q&As, income milestone support, platform growth guidance, and direct access to resources and opportunities specific to Nigerian healthcare professionals.
 

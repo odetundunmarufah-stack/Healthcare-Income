@@ -112,7 +112,7 @@ const getPaths = (answers) => {
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 export default function FreeSummary({ answers, userName, onPay, onReset }) {
-  const [selectedPath, setSelectedPath] = useState(null);
+  const [selectedPaths, setSelectedPaths] = useState([]);
   const score = useMemo(() => getScore(answers), [answers]);
   const archetype = useMemo(() => getArchetype(answers), [answers]);
   const paths = useMemo(() => getPaths(answers), [answers]);
@@ -120,7 +120,13 @@ export default function FreeSummary({ answers, userName, onPay, onReset }) {
   const scoreColor = score >= 75 ? "#1a6b3a" : score >= 55 ? "#c8a030" : "#8b3a3a";
   const scoreLabel = score >= 75 ? "High Readiness" : score >= 55 ? "Moderate Readiness" : "Building Phase";
 
-  const handlePathSelect = (pathId) => setSelectedPath(pathId);
+  const handlePathSelect = (pathId) => {
+    setSelectedPaths(prev => {
+      if (prev.includes(pathId)) return prev.filter(p => p !== pathId);
+      if (prev.length >= 2) return prev; // max 2
+      return [...prev, pathId];
+    });
+  };
 
   return (
     <div className="fs-wrap">
@@ -195,27 +201,37 @@ export default function FreeSummary({ answers, userName, onPay, onReset }) {
         {/* ── PATH SELECTION ── */}
         <div className="fs-paths-section">
           <div className="fs-paths-header">
-            <div className="fs-section-title" style={{ color: "#fff", marginBottom: 6 }}>CHOOSE YOUR PRIMARY INCOME PATH</div>
-            <p className="fs-paths-sub">Your full blueprint concentrates on the path you select. Each path reveals a different set of opportunities, certifications, and a 30-day action plan specific to that direction.</p>
+            <div className="fs-section-title" style={{ color: "#fff", marginBottom: 6 }}>CHOOSE YOUR PRIMARY INCOME PATH(S)</div>
+            <p className="fs-paths-sub">Select up to 2 paths. Your full blueprint will focus on your chosen path(s) — with specific opportunities, certifications, and a 30-day action plan tailored to your direction.</p>
           </div>
 
           <div className="fs-paths">
-            {paths.map((path) => (
-              <div
-                key={path.id}
-                className={`fs-path${selectedPath === path.id ? " fs-path-sel" : ""}`}
-                onClick={() => handlePathSelect(path.id)}
-              >
-                <div className="fs-path-top">
-                  <span className="fs-path-icon">{path.icon}</span>
-                  <span className="fs-path-label">{path.label}</span>
-                  {path.fit === "high" && <span className="fs-path-badge">Best fit</span>}
-                  <span className="fs-path-check">{selectedPath === path.id ? "✓" : ""}</span>
+            {paths.map((path) => {
+              const isSelected = selectedPaths.includes(path.id);
+              const maxReached = selectedPaths.length >= 2 && !isSelected;
+              return (
+                <div
+                  key={path.id}
+                  className={`fs-path${isSelected ? " fs-path-sel" : ""}${maxReached ? " fs-path-dim" : ""}`}
+                  onClick={() => !maxReached && handlePathSelect(path.id)}
+                  style={{ opacity: maxReached ? 0.5 : 1, cursor: maxReached ? "not-allowed" : "pointer" }}
+                >
+                  <div className="fs-path-top">
+                    <span className="fs-path-icon">{path.icon}</span>
+                    <span className="fs-path-label">{path.label}</span>
+                    {path.fit === "high" && <span className="fs-path-badge">Best fit</span>}
+                    <span className="fs-path-check">{isSelected ? "✓" : ""}</span>
+                  </div>
+                  <p className="fs-path-teaser">{path.teaser}</p>
                 </div>
-                <p className="fs-path-teaser">{path.teaser}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
+          {selectedPaths.length > 0 && (
+            <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 12, color: "rgba(200,160,48,0.8)", marginTop: 12, textAlign: "center" }}>
+              {selectedPaths.length === 1 ? "1 path selected · You can select 1 more" : "2 paths selected"}
+            </p>
+          )}
         </div>
 
         {/* ── PAYWALL ── */}
@@ -245,7 +261,7 @@ export default function FreeSummary({ answers, userName, onPay, onReset }) {
             <div className="fs-bonus-title">🎁 Included at no extra cost:</div>
             <div className="fs-bonus-item">✓ The First ₦100k Checklist — exactly what to do in 30 days</div>
             <div className="fs-bonus-item">✓ 30 Content Ideas tailored to your specialty</div>
-            <div className="fs-bonus-item">✓ Access to the Your Clinical Currency WhatsApp Community</div>
+            <div className="fs-bonus-item">✓ Access to the YCC Community</div>
           </div>
 
           {/* ── WHATSAPP COMMUNITY — just before pay button ── */}
@@ -253,7 +269,7 @@ export default function FreeSummary({ answers, userName, onPay, onReset }) {
             <div className="fs-wa-banner-top">
               <span className="fs-wa-banner-icon">💬</span>
               <div>
-                <div className="fs-wa-banner-title">The Your Clinical Currency Community</div>
+                <div className="fs-wa-banner-title">The YCC Community</div>
                 <div className="fs-wa-banner-sub">Included free with your blueprint</div>
               </div>
             </div>
@@ -261,7 +277,7 @@ export default function FreeSummary({ answers, userName, onPay, onReset }) {
               Your blueprint tells you what to do. The hardest part of building income outside the hospital is not knowing — it is doing, consistently, while managing a clinical career.
             </p>
             <p className="fs-wa-banner-body" style={{ marginTop: 8 }}>
-              The Your Clinical Currency WhatsApp Community is where implementation happens. Weekly check-ins, live Q&As, accountability partners, income milestone support, and a growing group of Nigerian healthcare professionals building real income together.
+              The YCC Community is where implementation happens. Weekly check-ins, live Q&As, accountability partners, income milestone support, and a growing group of Nigerian healthcare professionals building real income together.
             </p>
             <div className="fs-wa-banner-features">
               {[
@@ -285,15 +301,15 @@ export default function FreeSummary({ answers, userName, onPay, onReset }) {
             <span className="fs-price-now">Launch price: ₦5,000</span>
           </div>
 
-          {!selectedPath && (
-            <p className="fs-path-warning">⬆️ Select a career path above to unlock your blueprint</p>
+          {!selectedPaths.length && (
+            <p className="fs-path-warning">⬆️ Select at least one income path above to unlock your blueprint</p>
           )}
 
           <button
             className="fs-pay-btn"
-            onClick={() => selectedPath && onPay(selectedPath)}
-            disabled={!selectedPath}
-            style={{ opacity: selectedPath ? 1 : 0.4, cursor: selectedPath ? "pointer" : "not-allowed" }}
+            onClick={() => selectedPaths.length && onPay(selectedPaths)}
+            disabled={!selectedPaths.length}
+            style={{ opacity: selectedPaths.length ? 1 : 0.4, cursor: selectedPaths.length ? "pointer" : "not-allowed" }}
           >
             Unlock My Full Blueprint — ₦5,000 →
           </button>

@@ -27,7 +27,7 @@ export default function LeadGate({ onSubmit }) {
         <div className="lg-badge">Free Assessment</div>
         <h2 className="lg-title">Where should we send your results?</h2>
         <p className="lg-body">
-          Enter your name and email to begin the 25-question assessment. Your personalised Clinical Currency Blueprint will be waiting at the end.
+          Enter your name and email to begin your free assessment. Your personalised Clinical Currency Blueprint will be waiting at the end.
         </p>
 
         <div className="lg-fields">
@@ -69,7 +69,7 @@ export default function LeadGate({ onSubmit }) {
         </p>
 
         <div className="lg-trust">
-          {["25 personalised questions", "Free to complete", "Results in under 10 minutes"].map(t => (
+          {["Short free assessment", "Free to complete", "Results in under 10 minutes"].map(t => (
             <span key={t} className="lg-trust-item">✓ {t}</span>
           ))}
         </div>

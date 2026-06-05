@@ -26,7 +26,7 @@ export const STEPS = [
     id: "specialty", section: "Who You Are", sectionNum: 1, totalSections: 4,
     type: "text",
     question: "What is your specialty or clinical focus?",
-    hint: "Be as specific as you can — this is the single most important field in this assessment. The more precise you are, the more targeted your blueprint will be.",
+    hint: "Be as specific as you can — this is the most important field in this assessment. The more precise, the more targeted your blueprint.",
     placeholder: "e.g. Paediatrics · Women's Health & Fertility · Community Pharmacy · ICU Nursing · Musculoskeletal Physiotherapy · Psychiatry · General Practice · Emergency Medicine...",
   },
   {
@@ -57,14 +57,16 @@ export const STEPS = [
       "I have stepped back from clinical work",
       "Other — I will describe below",
     ],
+    hasOther: true,
   },
 
   // ─── SECTION 2: YOUR SKILLS (3 questions) ───
   {
     id: "non_clinical_skills", section: "Your Skills", sectionNum: 2, totalSections: 4,
     type: "multi",
+    maxSelect: 5,
     question: "Outside of patient care, what are you genuinely good at?",
-    hint: "Select everything that honestly applies — even if it feels unrelated to healthcare. These often create your most profitable income paths.",
+    hint: "Select up to 5 that honestly apply — even if they feel unrelated to healthcare. These often unlock your most profitable income paths.",
     options: [
       "Writing — articles, reports, long-form content",
       "Copywriting or persuasive writing",
@@ -104,8 +106,8 @@ export const STEPS = [
     id: "venture_background", section: "Your Skills", sectionNum: 2, totalSections: 4,
     type: "text",
     question: "Have you ever tried building income outside your clinical salary? Tell us what happened.",
-    hint: "Abandoned projects and failed attempts count — they reveal patterns we can use. If nothing yet, describe an idea you have been sitting on.",
-    placeholder: "e.g. I started posting health content but stopped after 3 weeks · I sell skincare products occasionally but it is not consistent · I tried offering home visits but could not get clients · I have an idea for a women's health platform but I do not know where to start · Nothing yet — this is completely new for me...",
+    hint: "Abandoned projects and failed attempts count — they reveal patterns we can use. If nothing yet, describe an idea you have been sitting on. Also mention how many hours per week you can realistically dedicate to building this.",
+    placeholder: "e.g. I started posting health content but stopped after 3 weeks · I sell skincare products occasionally · I tried offering home visits but could not get clients · I have an idea but no plan · Nothing yet — this is completely new to me · I can commit about 5–8 hours per week, usually evenings and weekends...",
   },
 
   // ─── SECTION 3: YOUR PERSONALITY (4 questions) ───
@@ -128,7 +130,7 @@ export const STEPS = [
     id: "visibility_preference", section: "Your Personality", sectionNum: 3, totalSections: 4,
     type: "single",
     question: "How do you feel about being personally visible online?",
-    hint: "There is no right answer here — both visible and completely faceless brands can be highly profitable. Be honest with yourself.",
+    hint: "There is no right answer — both visible and completely faceless brands can be highly profitable. Be honest with yourself.",
     options: [
       "Fully visible — my real name, face, and credentials. I am comfortable with that.",
       "Professionally visible — I will show up, but I want clear boundaries.",
@@ -141,8 +143,9 @@ export const STEPS = [
   {
     id: "content_comfort", section: "Your Personality", sectionNum: 3, totalSections: 4,
     type: "multi",
+    maxSelect: 4,
     question: "Which formats feel natural or exciting to you — not just tolerable?",
-    hint: "Select every format that genuinely appeals. Choosing something that drains you is how most people burn out before they earn anything.",
+    hint: "Select up to 4 formats that genuinely appeal. Choosing something that drains you is how most people burn out before they earn anything.",
     options: [
       "Short video — Reels, TikToks, YouTube Shorts",
       "Long-form video — YouTube tutorials, recorded courses, webinars",
@@ -173,8 +176,9 @@ export const STEPS = [
   {
     id: "income_type_preference", section: "Your Goals", sectionNum: 4, totalSections: 4,
     type: "multi",
+    maxSelect: 3,
     question: "What kind of income are you trying to build?",
-    hint: "Select everything that genuinely appeals. These lead to very different recommendations — be specific.",
+    hint: "Select up to 3 that genuinely appeal. These lead to very different recommendations — be specific.",
     options: [
       "Active local income — more naira, more quickly, through services or teaching",
       "Remote income — working with international clients, paid in dollars or pounds",
@@ -201,8 +205,9 @@ export const STEPS = [
   {
     id: "target_audience", section: "Your Goals", sectionNum: 4, totalSections: 4,
     type: "multi",
+    maxSelect: 4,
     question: "Who do you most want to serve or impact outside the hospital?",
-    hint: "Select every group that genuinely resonates. The more honest you are, the better your positioning.",
+    hint: "Select up to 4 groups that genuinely resonate. The more honest you are, the better your positioning.",
     options: [
       "Everyday Nigerians who need reliable, affordable health guidance",
       "Other healthcare professionals — career growth, clinical skills, income",
@@ -223,6 +228,6 @@ export const STEPS = [
     type: "text",
     question: "Last one — what is genuinely stopping you right now?",
     hint: "Skip the polished answer. The more honest you are here, the more useful your blueprint will be. You can also use this space to add anything else about your situation we should know.",
-    placeholder: "e.g. I have no idea where to start and it feels overwhelming · I am terrified of being judged by my colleagues · I have tried before and nothing worked · I do not believe anyone will pay me · I am a new mum with very little time · I already have 5,000 Instagram followers but no income from it · I am planning to relocate abroad in 6 months · I have a specific idea but no plan to execute it...",
+    placeholder: "e.g. I have no idea where to start and it feels overwhelming · I am terrified of being judged by my colleagues · I have tried before and nothing worked · I do not believe anyone will pay me · I am a new mum with very little time · I already have 5,000 Instagram followers but no income · I am planning to relocate abroad · I have a specific idea but no plan...",
   },
 ];

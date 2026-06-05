@@ -48,9 +48,9 @@ export default function PaymentGate({ onSuccess, selectedPath }) {
       <div className="pg-card">
         <div className="pg-logo">Your<span>Clinical</span>Currency</div>
         <div className="pg-badge">One-time access</div>
-        <h2 className="pg-title">{selectedPath ? `Unlock Your ${selectedPath.title} Blueprint` : "Unlock Your Full Blueprint"}</h2>
+        <h2 className="pg-title">Unlock Your Full Clinical Currency Blueprint</h2>
         <p className="pg-body">
-          Get a fully personalised income blueprint built from 25 data points about your profession, personality, goals, and location. Pay once — access yours forever.
+          Get a fully personalised income blueprint built from your assessment answers — specific to your specialty, personality, and goals. Pay once, access yours forever.
         </p>
 
         <div className="pg-price-row">
