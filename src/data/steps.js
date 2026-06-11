@@ -112,9 +112,10 @@ export const STEPS = [
   // ─── SECTION 3: YOUR PERSONALITY (4 questions) ───
   {
     id: "energy_type", section: "Your Personality", sectionNum: 3, totalSections: 4,
-    type: "single",
+    type: "multi",
+    maxSelect: 3,
     question: "When you are at your best, how do you naturally show up?",
-    hint: "Think about the version of yourself that feels most energised and in flow — not who you think you should be.",
+    hint: "Select up to 3 that genuinely resonate. This shapes your income model and content approach.",
     options: [
       "I come alive in front of people — camera, stage, or a room full of energy",
       "I am at my best one-on-one — deep conversations, not performances",
@@ -127,9 +128,10 @@ export const STEPS = [
   },
   {
     id: "visibility_preference", section: "Your Personality", sectionNum: 3, totalSections: 4,
-    type: "single",
+    type: "multi",
+    maxSelect: 2,
     question: "How do you feel about being personally visible online?",
-    hint: "There is no right answer — both visible and completely faceless brands can be highly profitable. Be honest with yourself.",
+    hint: "Select up to 2 that feel true. Both visible and completely faceless brands can be highly profitable.",
     options: [
       "Fully visible — my real name, face, and credentials. I am comfortable with that.",
       "Professionally visible — I will show up, but I want clear boundaries.",
