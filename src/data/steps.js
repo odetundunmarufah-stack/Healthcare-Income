@@ -18,7 +18,6 @@ export const STEPS = [
       "Optometrist",
       "Laboratory Scientist or Radiographer",
       "Nutritionist or Dietitian",
-      "Public Health Professional",
       "Other Allied Health Professional",
     ],
   },

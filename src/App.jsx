@@ -68,6 +68,8 @@ export default function App() {
   const [streamed, setStreamed] = useState("");
   const [report, setReport] = useState("");
   const [error, setError] = useState("");
+  const [freeScore, setFreeScore] = useState(null);
+  const [freeArchetype, setFreeArchetype] = useState(null);
 
   const cur = STEPS[step];
 
@@ -178,6 +180,7 @@ export default function App() {
     setSelectedPath(null);
     setMultiSel([]); setTextVal(""); setRating(0); setOtherText("");
     setStreamed(""); setReport(""); setError("");
+    setFreeScore(null); setFreeArchetype(null);
   };
 
   const handleLeadSubmit = async ({ name, email }) => {
@@ -232,10 +235,11 @@ export default function App() {
         <FreeSummary
           answers={answers}
           userName={userName}
-          onPay={(path) => {
-            setSelectedPath(path);
+          onPay={(paths) => {
+            setSelectedPath(paths);
             setPhase("payment");
           }}
+          onScoreReady={(s, a) => { setFreeScore(s); setFreeArchetype(a); }}
           onReset={reset}
         />
       )}
@@ -257,7 +261,9 @@ export default function App() {
           done={done}
           streamed={streamed}
           userName={userName}
-          selectedPath={selectedPath}
+          selectedPaths={selectedPath}
+          score={freeScore}
+          archetype={freeArchetype}
           onReset={reset}
         />
       )}
