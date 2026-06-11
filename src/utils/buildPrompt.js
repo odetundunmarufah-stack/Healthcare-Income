@@ -4,17 +4,23 @@ const PATH_LABELS = {
   remote: "The Remote Income Path — dollar-denominated remote clinical work",
   education: "The Clinical Educator Path — content, courses, and digital health education",
   consulting: "The Private Consulting Path — direct consulting, advisory, and private practice",
+  content: "The Health Content Creator Path — platform building, brand deals, and digital products",
+  business: "The Healthcare Business Path — scalable clinic, product, or platform",
+  writing: "The Medical Writing Path — pharmaceutical, NGO, and clinical publication writing",
+  transition: "The Non-Clinical Career Path — health tech, pharma, insurance, and corporate roles",
+  aesthetics: "The Clinical Aesthetics & Wellness Path — aesthetics, wellness, and preventive health business",
 };
 
 export const buildPrompt = (answers, selectedPaths) => {
   const paths = Array.isArray(selectedPaths) ? selectedPaths : [selectedPaths].filter(Boolean);
   const primaryPath = paths[0] || "consulting";
   const secondaryPath = paths[1] || null;
-  const allPathIds = ["remote", "education", "consulting"];
-  const unchosen = allPathIds.filter(p => !paths.includes(p));
-  const primaryLabel = PATH_LABELS[primaryPath] || "General Income Building";
-  const secondaryLabel = secondaryPath ? PATH_LABELS[secondaryPath] : null;
-  const unchosenLabels = unchosen.map(p => PATH_LABELS[p]);
+  // Unchosen = any paths NOT in the selected list (just describe generically)
+  const primaryLabel = PATH_LABELS[primaryPath] || primaryPath;
+  const secondaryLabel = secondaryPath ? (PATH_LABELS[secondaryPath] || secondaryPath) : null;
+  const unchosenDescription = secondaryPath
+    ? "the other available income paths not selected"
+    : "the other two available income paths not selected";
 
   let pathFocusInstruction;
   if (secondaryPath) {
@@ -22,17 +28,17 @@ export const buildPrompt = (answers, selectedPaths) => {
       "The user selected TWO income paths:",
       "PRIMARY (50% of report focus): " + primaryLabel,
       "SECONDARY (20% of report focus): " + secondaryLabel,
-      "OVERVIEW ONLY (30% combined): " + unchosenLabels.join(" and "),
+      "OVERVIEW ONLY (30% combined): " + unchosenDescription,
       "",
-      "Build every recommendation around the PRIMARY path first, weave in the SECONDARY path where natural. The two unchosen paths get only brief mentions in the Opportunity Map."
+      "Build every recommendation around the PRIMARY path first, weave in the SECONDARY path where natural. The unchosen paths get only brief mentions in the Opportunity Map."
     ].join("\n");
   } else {
     pathFocusInstruction = [
       "The user selected ONE income path:",
       "PRIMARY (70% of report focus): " + primaryLabel,
-      "OVERVIEW ONLY (30% combined): " + unchosenLabels.join(" and "),
+      "OVERVIEW ONLY (30% combined): " + unchosenDescription,
       "",
-      "70% of every section must be built around the PRIMARY path. The two unchosen paths are acknowledged briefly in the first section only."
+      "70% of every section must be built around the PRIMARY path. The unchosen paths are acknowledged briefly in the first section only."
     ].join("\n");
   }
 
@@ -50,7 +56,7 @@ export const buildPrompt = (answers, selectedPaths) => {
     "Generate EXACTLY these 14 sections using ## for each heading in UPPERCASE:",
     "",
     "## YOUR OTHER TWO PATHS — A BRIEF OVERVIEW",
-    "Briefly acknowledge the unchosen path(s): " + unchosenLabels.join(" and ") + ". For each write 2-3 warm sentences — what it involves, one specific example for their specialty, and why they might return to it later. OVERVIEW ONLY — no action steps.",
+    "Briefly acknowledge the unchosen paths in general terms — what other directions exist for healthcare professionals, one specific example for their specialty, and why they might explore those later. OVERVIEW ONLY — no action steps.",
     "",
     "## YOUR CLINICAL EDGE",
     "Write 3 paragraphs like a mentor genuinely excited about this person's profile. Be specific to their specialty. Name the exact market gap their background fills. Connect to their chosen path. End with bold: The bottom line: followed by the most important thing they need to hear.",

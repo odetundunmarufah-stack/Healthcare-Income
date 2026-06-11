@@ -70,31 +70,147 @@ const getBlocker = (answers) => {
 };
 
 // ─── PATHS ───────────────────────────────────────────────────────────────────
+const ALL_PATHS = [
+  {
+    id: "remote",
+    icon: "🌍",
+    label: "The Remote Income Path",
+    teaser: (answers) => {
+      const prof = answers.profession?.includes("Doctor") ? "doctors" : answers.profession?.includes("Nurse") ? "nurses" : answers.profession?.includes("Pharmacist") ? "pharmacists" : "healthcare professionals";
+      return `There is a dollar-denominated role that Nigerian ${prof} with your background are being hired for remotely right now — no relocation required. Most people in your position have never heard of it. Your blueprint reveals exactly what it is, how to qualify, and how to land your first client within 90 days.`;
+    },
+    score: (a) => {
+      let s = 0;
+      if (a.income_type_preference?.includes("Remote") || a.income_type_preference?.includes("dollar")) s += 40;
+      if (a.income_goal?.includes("dollar") || a.income_goal?.includes("USD")) s += 20;
+      if (a.tech_comfort && parseInt(a.tech_comfort) >= 5) s += 10;
+      if (a.non_clinical_skills?.includes("Virtual") || a.non_clinical_skills?.includes("Medical coding") || a.non_clinical_skills?.includes("Prior auth")) s += 20;
+      if (a.target_audience?.includes("international") || a.target_audience?.includes("US, UK")) s += 10;
+      return s;
+    }
+  },
+  {
+    id: "education",
+    icon: "🎓",
+    label: "The Clinical Educator Path",
+    teaser: (answers) => `Your ${answers.specialty || "clinical"} knowledge is a curriculum that Nigerian patients, students, and professionals will pay to access — but only when packaged correctly. This path reveals the exact format, platform, and first offer that fits your personality. The first income from this path does not require an existing audience.`,
+    score: (a) => {
+      let s = 0;
+      if (a.energy_type?.includes("teacher") || a.energy_type?.includes("explain")) s += 30;
+      if (a.content_comfort?.includes("Writing") || a.content_comfort?.includes("courses") || a.content_comfort?.includes("Structured")) s += 20;
+      if (a.non_clinical_skills?.includes("Teaching") || a.non_clinical_skills?.includes("Writing") || a.non_clinical_skills?.includes("content creation")) s += 20;
+      if (a.income_type_preference?.includes("Passive") || a.income_type_preference?.includes("Portfolio")) s += 15;
+      if (a.target_audience?.includes("students") || a.target_audience?.includes("professionals") || a.target_audience?.includes("patients")) s += 15;
+      return s;
+    }
+  },
+  {
+    id: "consulting",
+    icon: "💼",
+    label: "The Private Consulting Path",
+    teaser: (answers) => `There is a direct, no-audience-required path to earning ₦150,000–₦500,000 per month from your ${answers.specialty || "clinical"} expertise — through private consultations or advisory work. No platform needed. No content. It starts with one conversation. Your blueprint shows you exactly how to price it and get your first paying client.`,
+    score: (a) => {
+      let s = 0;
+      if (a.energy_type?.includes("one-on-one") || a.energy_type?.includes("warm")) s += 25;
+      if (a.visibility_preference?.includes("Fully visible") || a.visibility_preference?.includes("Professionally")) s += 20;
+      if (a.income_type_preference?.includes("Active local")) s += 25;
+      if (a.income_goal?.includes("150,000") || a.income_goal?.includes("500,000")) s += 15;
+      if (a.non_clinical_skills?.includes("Sales") || a.non_clinical_skills?.includes("consulting")) s += 15;
+      return s;
+    }
+  },
+  {
+    id: "content",
+    icon: "📱",
+    label: "The Health Content Creator Path",
+    teaser: (answers) => `Your ${answers.specialty || "clinical"} background gives you the authority to build a health content brand that Nigerian audiences will follow, trust, and pay for. This path is for clinicians who want to turn their expertise into a platform — and their platform into income through brand deals, digital products, and paid communities.`,
+    score: (a) => {
+      let s = 0;
+      if (a.visibility_preference?.includes("Fully visible") || a.visibility_preference?.includes("Professionally")) s += 25;
+      if (a.content_comfort?.includes("Short video") || a.content_comfort?.includes("Live sessions") || a.content_comfort?.includes("Audio")) s += 25;
+      if (a.energy_type?.includes("engaging") || a.energy_type?.includes("front of people")) s += 20;
+      if (a.non_clinical_skills?.includes("Social media") || a.non_clinical_skills?.includes("Video editing")) s += 20;
+      if (a.income_type_preference?.includes("Portfolio") || a.income_type_preference?.includes("Passive")) s += 10;
+      return s;
+    }
+  },
+  {
+    id: "business",
+    icon: "🏢",
+    label: "The Healthcare Business Path",
+    teaser: (answers) => `Your profile points toward building something that scales beyond your personal hours — a healthcare product, platform, clinic, or service business. This path is for clinicians who are not just looking for side income, but want to build an asset. Your blueprint maps out the most realistic first step for someone with your specific background.`,
+    score: (a) => {
+      let s = 0;
+      if (a.income_type_preference?.includes("Business") || a.income_type_preference?.includes("scalable")) s += 40;
+      if (a.income_goal?.includes("1,000,000") || a.income_goal?.includes("serious")) s += 20;
+      if (a.non_clinical_skills?.includes("Project management") || a.non_clinical_skills?.includes("Sales") || a.non_clinical_skills?.includes("consulting")) s += 20;
+      if (a.energy_type?.includes("builder") || a.energy_type?.includes("systems")) s += 20;
+      return s;
+    }
+  },
+  {
+    id: "writing",
+    icon: "✍️",
+    label: "The Medical Writing Path",
+    teaser: (answers) => `There is a well-paying, completely remote income stream for clinicians who can write — medical writing for pharmaceutical companies, health NGOs, and clinical publications. Your ${answers.specialty || "clinical"} background qualifies you immediately. Most Nigerian clinicians have never considered it. Your blueprint shows you exactly how to enter this market.`,
+    score: (a) => {
+      let s = 0;
+      if (a.non_clinical_skills?.includes("Writing") || a.non_clinical_skills?.includes("Copywriting") || a.non_clinical_skills?.includes("content creation")) s += 35;
+      if (a.content_comfort?.includes("Writing") || a.content_comfort?.includes("Downloadable")) s += 20;
+      if (a.visibility_preference?.includes("faceless") || a.visibility_preference?.includes("brand")) s += 15;
+      if (a.income_type_preference?.includes("Remote") || a.income_type_preference?.includes("Portfolio")) s += 20;
+      if (a.energy_type?.includes("precise") || a.energy_type?.includes("analytical")) s += 10;
+      return s;
+    }
+  },
+  {
+    id: "transition",
+    icon: "🔄",
+    label: "The Non-Clinical Career Path",
+    teaser: (answers) => `Your clinical training opens doors in healthcare technology, pharmaceutical companies, health insurance, medical affairs, and corporate wellness — roles that pay significantly more than hospital medicine and require zero patient contact. This path maps your fastest route from clinical work into these higher-paying non-clinical roles.`,
+    score: (a) => {
+      let s = 0;
+      if (a.income_type_preference?.includes("transition") || a.income_type_preference?.includes("non-clinical")) s += 50;
+      if (a.work_status?.includes("stepped back") || a.work_status?.includes("between")) s += 20;
+      if (a.income_goal?.includes("dollar") || a.income_goal?.includes("USD")) s += 15;
+      if (a.non_clinical_skills?.includes("Project management") || a.non_clinical_skills?.includes("Data analysis") || a.non_clinical_skills?.includes("Medical coding")) s += 15;
+      return s;
+    }
+  },
+  {
+    id: "aesthetics",
+    icon: "💉",
+    label: "The Clinical Aesthetics & Wellness Path",
+    teaser: (answers) => `The Nigerian aesthetics and wellness market is growing rapidly — and clinicians with your training have a significant credibility advantage over non-medical practitioners. This path maps the business model, certifications, and starting offer for a ${answers.specialty || "clinical"} professional who wants to build income in aesthetics, wellness, or preventive health.`,
+    score: (a) => {
+      let s = 0;
+      if (a.non_clinical_skills?.includes("Beauty") || a.non_clinical_skills?.includes("Hairdressing") || a.non_clinical_skills?.includes("aesthetics")) s += 50;
+      if (a.target_audience?.includes("aesthetics") || a.target_audience?.includes("wellness") || a.target_audience?.includes("Women")) s += 25;
+      if (a.income_type_preference?.includes("Active local") || a.income_type_preference?.includes("Business")) s += 15;
+      if (a.profession?.includes("Doctor") || a.profession?.includes("Nurse") || a.profession?.includes("Pharmacist")) s += 10;
+      return s;
+    }
+  },
+];
+
 const getPaths = (answers) => {
-  const profession = answers.profession || "";
-  const specialty = answers.specialty || "your specialty";
-  const incomeType = answers.income_type_preference || "";
-  const visibility = answers.visibility_preference || "";
-  const content = answers.content_comfort || "";
-  const energy = answers.energy_type || "";
-  const prof = profession.includes("Doctor") ? "doctors" : profession.includes("Nurse") ? "nurses" : profession.includes("Pharmacist") ? "pharmacists" : "healthcare professionals";
-  return [
-    {
-      id: "remote", icon: "🌍", label: "The Remote Income Path",
-      teaser: `There is a dollar-denominated role that Nigerian ${prof} with your background are being hired for remotely right now — no relocation required. Most people in your position have never heard of it. Your blueprint reveals exactly what it is, how to qualify, and how to land your first client within 90 days.`,
-      fit: incomeType.includes("Remote") || incomeType.includes("dollar") ? "high" : "medium"
-    },
-    {
-      id: "education", icon: "🎓", label: "The Clinical Educator Path",
-      teaser: `Your ${specialty} knowledge is a curriculum that Nigerian patients, students, and professionals will pay to access — but only when packaged correctly. This path reveals the exact format, platform, and first offer that fits your personality. The first income from this path does not require an existing audience.`,
-      fit: content.includes("Writing") || content.includes("courses") || energy.includes("teacher") ? "high" : "medium"
-    },
-    {
-      id: "consulting", icon: "💼", label: "The Private Consulting Path",
-      teaser: `There is a direct, no-audience-required path to earning ₦150,000–₦500,000 per month from your ${specialty} expertise — through private consultations or advisory work. No platform needed. No content. It starts with one conversation. Your blueprint shows exactly how to price it and get your first paying client.`,
-      fit: visibility.includes("visible") || energy.includes("one-on-one") ? "high" : "medium"
-    },
-  ].sort((a, b) => a.fit === "high" ? -1 : 1);
+  // Score every path against answers
+  const scored = ALL_PATHS.map(path => ({
+    ...path,
+    teaser: path.teaser(answers),
+    computedScore: path.score(answers),
+  }));
+
+  // Sort by score descending, take top 3
+  scored.sort((a, b) => b.computedScore - a.computedScore);
+  const top3 = scored.slice(0, 3);
+
+  // Mark the highest scoring one as "best fit"
+  top3[0].fit = "high";
+  top3[1].fit = "medium";
+  top3[2].fit = "medium";
+
+  return top3;
 };
 
 const TOTAL_SCREENS = 3;
