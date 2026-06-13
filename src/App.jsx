@@ -27,10 +27,9 @@ const captureLead = async (name, email) => {
   } catch {}
 };
 
-// ─── EMAILJS PDF DELIVERY ─────────────────────────────────────────────────────
-const sendReportEmail = async (name, email, reportText) => {
+// ─── EMAILJS REPORT LINK DELIVERY ────────────────────────────────────────────
+const sendReportEmail = async (name, email, reportKey) => {
   try {
-    // Load EmailJS dynamically
     if (!window.emailjs) {
       await new Promise((res, rej) => {
         const s = document.createElement("script");
@@ -40,12 +39,14 @@ const sendReportEmail = async (name, email, reportText) => {
       });
       window.emailjs.init(EMAILJS_PUBLIC_KEY);
     }
-    // Send email with report as text (PDF generation via EmailJS template)
+    const reportUrl = `${window.location.origin}?report=${reportKey}`;
     await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       to_name: name || "Healthcare Professional",
       to_email: email,
-      report_preview: reportText.slice(0, 3000),
+      report_link: reportUrl,
       from_name: "Your Clinical Currency",
+      whatsapp_link: "https://chat.whatsapp.com/KqhTYdiG4LjF9IrxPRWnD2",
+      message: `Your Clinical Currency Blueprint is ready. Tap the button below to view your full personalised report on any device. Your bonuses (First 100k Checklist, 30 Content Ideas, and YCC Community access) are all inside your report.`,
     });
   } catch (e) {
     console.log("Email send failed:", e);
@@ -56,7 +57,20 @@ const OTHER_OPTION = "Other — please describe below";
 
 export default function App() {
   const [userName, setUserName] = useState(() => localStorage.getItem("lead_name") || "");
-  const [phase, setPhase] = useState("landing");
+  const [phase, setPhase] = useState(() => {
+    // Check if returning user with report link
+    const params = new URLSearchParams(window.location.search);
+    const reportKey = params.get("report");
+    if (reportKey) {
+      const stored = localStorage.getItem(reportKey);
+      if (stored) return "results";
+    }
+    return "landing";
+  });
+  const [returnReportKey] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("report") || null;
+  });
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [selectedPath, setSelectedPath] = useState(null);
@@ -65,8 +79,22 @@ export default function App() {
   const [otherText, setOtherText] = useState("");
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
-  const [streamed, setStreamed] = useState("");
-  const [report, setReport] = useState("");
+  const [streamed, setStreamed] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reportKey = params.get("report");
+    if (reportKey) {
+      try { return JSON.parse(localStorage.getItem(reportKey))?.report || ""; } catch { return ""; }
+    }
+    return "";
+  });
+  const [report, setReport] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reportKey = params.get("report");
+    if (reportKey) {
+      try { return JSON.parse(localStorage.getItem(reportKey))?.report || ""; } catch { return ""; }
+    }
+    return "";
+  });
   const [error, setError] = useState("");
   const [freeScore, setFreeScore] = useState(null);
   const [freeArchetype, setFreeArchetype] = useState(null);
@@ -162,10 +190,18 @@ export default function App() {
         }
       }
       setReport(full);
-      // Send report email
+      // Store report with unique key for email retrieval
       const email = localStorage.getItem("paid_email") || localStorage.getItem("lead_email");
       const name = localStorage.getItem("lead_name") || userName;
-      if (email) sendReportEmail(name, email, full);
+      const reportKey = "ycc_report_" + Date.now();
+      localStorage.setItem(reportKey, JSON.stringify({
+        report: full,
+        name,
+        email,
+        paths: Array.isArray(path) ? path : [path],
+        timestamp: new Date().toISOString(),
+      }));
+      if (email) sendReportEmail(name, email, reportKey);
     } catch {
       setError("Something went wrong generating your report. Please try again.");
       setPhase("payment");

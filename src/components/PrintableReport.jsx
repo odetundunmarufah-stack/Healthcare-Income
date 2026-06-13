@@ -5,8 +5,24 @@ import { ICONS, CARD_COLORS } from "../data/reportConfig";
 
 const PATH_NAMES = {
   remote: "The Remote Income Path",
+  remote_medva: "Medical Virtual Assistant",
+  prior_auth: "Prior Authorisation Specialist",
   education: "The Clinical Educator Path",
+  online_courses: "Online Courses and Teaching",
   consulting: "The Private Consulting Path",
+  private_consult: "Private Consultation Practice",
+  health_content: "Health Content Creator",
+  content: "Health Content Creator",
+  digital_products: "Digital Products and Passive Income",
+  med_writing: "Medical Writing",
+  writing: "Medical Writing",
+  corporate_wellness: "Corporate Wellness and Speaking",
+  health_coaching: "Health Coaching and Advisory",
+  health_tech: "Health Tech and Digital Ventures",
+  business: "Healthcare Business",
+  aesthetics: "Medical Aesthetics and Wellness",
+  community_building: "Healthcare Community and Membership",
+  transition: "Non-Clinical Career Transition",
 };
 
 // ─── OPEN IN NEW TAB ─────────────────────────────────────────────────────────

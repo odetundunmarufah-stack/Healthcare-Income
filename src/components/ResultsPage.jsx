@@ -62,7 +62,7 @@ export default function ResultsPage({ sections, done, streamed, userName, select
 
               {/* ── EMAIL DELIVERY CONFIRMATION ── */}
               <div className="r-delivery-msg">
-                ✉️ Your blueprint has been sent to your email as a PDF. Check your inbox.
+                ✉️ Your blueprint link has been sent to your email. Open it on any device to view your full report anytime.
               </div>
 
               {/* ── DOWNLOAD PDF BUTTON ── */}
@@ -70,8 +70,11 @@ export default function ResultsPage({ sections, done, streamed, userName, select
                 className="btn-download-pdf"
                 onClick={() => openPrintableReport({ sections, userName, selectedPaths, score, archetype })}
               >
-                ⬇ Download / View as PDF
+                ⬇ View / Save as PDF
               </button>
+              <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", maxWidth: 360 }}>
+                On mobile: tap the button above, then use your browser's share or print option to save as PDF. Works best on desktop.
+              </p>
 
               {/* ── WHATSAPP COMMUNITY CTA ── */}
               <div className="r-wa-cta">
