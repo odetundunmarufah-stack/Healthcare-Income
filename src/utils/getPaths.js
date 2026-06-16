@@ -160,6 +160,39 @@ const ALL_PATHS = [
 ];
 
 // ─── SCORING ENGINE ───────────────────────────────────────────────────────────
+// Time demand levels per path (hours per week needed to be viable)
+const PATH_TIME_DEMAND = {
+  remote_medva: "low",       // Async, flexible
+  prior_auth: "low",         // Async, flexible
+  med_writing: "low",        // Async, flexible
+  digital_products: "low",   // Build once, earn passively
+  private_consult: "medium", // Needs consistent client management
+  health_coaching: "medium",
+  corporate_wellness: "medium",
+  health_content: "high",    // Needs consistent posting
+  online_courses: "high",    // Big upfront creation time
+  community_building: "high",
+  health_tech: "high",
+  aesthetics: "medium",
+};
+
+const getHoursScore = (availability, timeDemand) => {
+  // Parse availability answer into a number
+  let hours = 8; // default mid
+  if (availability.includes("1 to 3")) hours = 2;
+  else if (availability.includes("4 to 7")) hours = 5;
+  else if (availability.includes("8 to 15")) hours = 10;
+  else if (availability.includes("16 to 25")) hours = 20;
+  else if (availability.includes("More than 25")) hours = 30;
+
+  // Penalise high-demand paths for low availability
+  if (timeDemand === "high" && hours <= 5) return -4;
+  if (timeDemand === "high" && hours <= 10) return -2;
+  if (timeDemand === "medium" && hours <= 2) return -2;
+  if (timeDemand === "low" && hours <= 5) return +2; // Bonus for low-demand paths when time is scarce
+  return 0;
+};
+
 export const getPaths = (answers) => {
   const incomeType = answers.income_type_preference || "";
   const skills = answers.non_clinical_skills || "";
@@ -170,6 +203,7 @@ export const getPaths = (answers) => {
   const audience = answers.target_audience || "";
   const profession = answers.profession || "";
   const tech = parseInt(answers.tech_comfort) || 0;
+  const availability = answers.availability || "";
 
   const scored = ALL_PATHS.map(path => {
     let score = 0;
@@ -184,6 +218,10 @@ export const getPaths = (answers) => {
     if (s.audience) s.audience.forEach(kw => { if (audience.toLowerCase().includes(kw.toLowerCase())) score += 1; });
     if (s.profession) s.profession.forEach(kw => { if (profession.includes(kw)) score += 1; });
     if (s.tech) { if (s.tech.includes(tech)) score += 2; }
+
+    // Apply availability scoring
+    const timeDemand = PATH_TIME_DEMAND[path.id] || "medium";
+    score += getHoursScore(availability, timeDemand);
 
     return { ...path, score };
   });

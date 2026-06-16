@@ -102,11 +102,17 @@ export const STEPS = [
     },
   },
   {
-    id: "venture_background", section: "Your Skills", sectionNum: 2, totalSections: 4,
-    type: "text",
-    question: "Have you ever tried building income outside your clinical salary? Tell us what happened.",
-    hint: "Abandoned projects and failed attempts count — they reveal patterns we can use. If nothing yet, describe an idea you have been sitting on. Also mention how many hours per week you can realistically dedicate to building this.",
-    placeholder: "e.g. I started posting health content but stopped after 3 weeks · I sell skincare products occasionally · I tried offering home visits but could not get clients · I have an idea but no plan · Nothing yet — this is completely new to me · I can commit about 5–8 hours per week, usually evenings and weekends...",
+    id: "availability", section: "Your Skills", sectionNum: 2, totalSections: 4,
+    type: "single",
+    question: "How many hours per week can you realistically dedicate to building this?",
+    hint: "Be conservative. Overestimating is the most common reason side businesses stall. Think about your actual schedule right now, not your ideal one.",
+    options: [
+      "1 to 3 hours — very limited, mostly stolen moments between shifts",
+      "4 to 7 hours — a few consistent windows each week",
+      "8 to 15 hours — meaningful part-time commitment",
+      "16 to 25 hours — near full-time alongside clinical work",
+      "More than 25 hours — I am treating this as a serious priority right now",
+    ],
   },
 
   // ─── SECTION 3: YOUR PERSONALITY (4 questions) ───
@@ -228,7 +234,7 @@ export const STEPS = [
     id: "biggest_blocker", section: "Your Goals", sectionNum: 4, totalSections: 4,
     type: "text",
     question: "Last one — what is genuinely stopping you right now?",
-    hint: "Skip the polished answer. The more honest you are here, the more useful your blueprint will be. You can also use this space to add anything else about your situation we should know.",
-    placeholder: "e.g. I have no idea where to start and it feels overwhelming · I am terrified of being judged by my colleagues · I have tried before and nothing worked · I do not believe anyone will pay me · I am a new mum with very little time · I already have 5,000 Instagram followers but no income · I am planning to relocate abroad · I have a specific idea but no plan...",
+    hint: "Skip the polished answer. Also use this space to share any past attempts, ideas you have tried, or context about your situation that would help us give you a more accurate plan.",
+    placeholder: "e.g. I have no idea where to start · I am scared of colleague judgment · I tried posting health content for 3 weeks then stopped · I offered consultations once but got no clients · I have a specific idea but no plan · I do not believe anyone will pay me · I am a new mum with very limited time · I already have 5,000 Instagram followers but no income · I am planning to relocate abroad...",
   },
 ];
