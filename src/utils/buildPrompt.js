@@ -15,6 +15,7 @@ const PATH_LABELS = {
   writing: "Medical Writing",
   corporate_wellness: "Corporate Wellness and Speaking",
   health_coaching: "Health Coaching and Advisory",
+  tech_clinical: "Tech-Enabled Clinical Path",
   health_tech: "Health Tech and Digital Ventures",
   business: "Healthcare Business",
   aesthetics: "Medical Aesthetics and Wellness",

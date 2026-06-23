@@ -121,8 +121,19 @@ const ALL_PATHS = [
     }
   },
   {
-    id: "health_tech",
-    icon: "⚡",
+    id: "tech_clinical",
+    icon: "🖥️",
+    label: "Tech-Enabled Clinical Path",
+    teaser: "Your clinical expertise becomes significantly more valuable when combined with digital tools — telemedicine, AI-assisted diagnostics, health app advisory, and remote patient monitoring are creating entirely new income streams for clinicians who are comfortable with technology. This path shows you how to position your specialty within the Nigerian and global health tech space without needing to code or build a startup from scratch.",
+    scores: {
+      income_type: ["Remote income", "Career transition", "Business ownership"],
+      skills: ["Coding", "web development", "Data analysis", "Project management", "AI tools"],
+      tech: [6, 7, 8, 9, 10],
+      energy: ["systems builder", "analytical", "builder", "precise"],
+      content: ["Downloadable", "structured courses"],
+      goal: ["Dollar income", "₦500,000", "₦1,000,000"],
+    }
+  },
     label: "Health Tech & Digital Ventures",
     teaser: "The Nigerian health tech space is growing fast — and clinical co-founders, product advisors, and healthcare consultants for tech companies are in high demand. If you have ever thought about building a health platform, this path maps out how to validate, launch, and fund a healthcare digital product using your clinical expertise as the core asset.",
     scores: {
@@ -173,6 +184,7 @@ const PATH_TIME_DEMAND = {
   online_courses: "high",    // Big upfront creation time
   community_building: "high",
   health_tech: "high",
+  tech_clinical: "medium",
   aesthetics: "medium",
 };
 
