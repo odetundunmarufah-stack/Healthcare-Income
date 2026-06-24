@@ -134,6 +134,9 @@ const ALL_PATHS = [
       goal: ["Dollar income", "₦500,000", "₦1,000,000"],
     }
   },
+  {
+    id: "health_tech",
+    icon: "⚡",
     label: "Health Tech & Digital Ventures",
     teaser: "The Nigerian health tech space is growing fast — and clinical co-founders, product advisors, and healthcare consultants for tech companies are in high demand. If you have ever thought about building a health platform, this path maps out how to validate, launch, and fund a healthcare digital product using your clinical expertise as the core asset.",
     scores: {
@@ -217,6 +220,40 @@ export const getPaths = (answers) => {
   const tech = parseInt(answers.tech_comfort) || 0;
   const availability = answers.availability || "";
 
+  // ── Read free text fields for strong intent signals ──────────────────────────
+  const freeText = [
+    answers.biggest_blocker || "",
+    answers.specialty || "",
+  ].join(" ").toLowerCase();
+
+  // Map text keywords to path IDs and their boost amount
+  const TEXT_BOOSTS = [
+    { keywords: ["medva", "medical va", "medical virtual", "virtual assistant", "virtual assis"], path: "remote_medva", boost: 6 },
+    { keywords: ["prior auth", "utilisation review", "utilization review", "insurance review", "pre-auth"], path: "prior_auth", boost: 6 },
+    { keywords: ["medical writing", "med writing", "clinical writing", "pharma writing", "write for", "freelance writ"], path: "med_writing", boost: 6 },
+    { keywords: ["private consult", "private practice", "home visit", "private clinic", "own clinic", "consultation service"], path: "private_consult", boost: 6 },
+    { keywords: ["content creat", "instagram", "tiktok", "social media", "health content", "health influenc"], path: "health_content", boost: 5 },
+    { keywords: ["course", "e-book", "ebook", "digital product", "selar", "gumroad", "passive"], path: "digital_products", boost: 5 },
+    { keywords: ["teach", "training", "online class", "webinar", "cohort", "curriculum"], path: "online_courses", boost: 5 },
+    { keywords: ["corporate", "wellness talk", "workplace health", "company health", "speaking"], path: "corporate_wellness", boost: 5 },
+    { keywords: ["coaching", "health coach", "chronic", "weight loss", "wellness coach"], path: "health_coaching", boost: 5 },
+    { keywords: ["health tech", "medtech", "health app", "telemedicine", "telehealth", "startup", "co-founder"], path: "health_tech", boost: 5 },
+    { keywords: ["tech-enabled", "tech enabled", "digital clinic", "remote monitoring", "ai diagnostic"], path: "tech_clinical", boost: 5 },
+    { keywords: ["aesthetics", "botox", "filler", "skincare clinic", "derma", "beauty clinic"], path: "aesthetics", boost: 6 },
+    { keywords: ["community", "membership", "whatsapp group", "telegram group", "paid group"], path: "community_building", boost: 5 },
+    { keywords: ["relocat", "japa", "abroad", "uk", "canada", "usa", "united states", "united kingdom", "dollar", "usd", "gbp", "remote work", "work remote"], path: "remote_medva", boost: 4 },
+  ];
+
+  // Build a text boost map per path
+  const textBoostMap = {};
+  TEXT_BOOSTS.forEach(({ keywords, path, boost }) => {
+    keywords.forEach(kw => {
+      if (freeText.includes(kw)) {
+        textBoostMap[path] = (textBoostMap[path] || 0) + boost;
+      }
+    });
+  });
+
   const scored = ALL_PATHS.map(path => {
     let score = 0;
     const s = path.scores;
@@ -234,6 +271,9 @@ export const getPaths = (answers) => {
     // Apply availability scoring
     const timeDemand = PATH_TIME_DEMAND[path.id] || "medium";
     score += getHoursScore(availability, timeDemand);
+
+    // Apply text boost — strong intent signals from free text fields
+    score += (textBoostMap[path.id] || 0);
 
     return { ...path, score };
   });
