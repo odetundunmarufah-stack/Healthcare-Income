@@ -53,17 +53,56 @@ const sendReportEmail = async (name, email, reportKey) => {
   }
 };
 
-const OTHER_OPTION = "Other — please describe below";
+// ─── EMAILJS FREE SUMMARY FOLLOW-UP ──────────────────────────────────────────
+const sendFreeSummaryEmail = async (name, email, archetype, topPath, summaryKey) => {
+  try {
+    if (!window.emailjs) {
+      await new Promise((res, rej) => {
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js";
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+      window.emailjs.init(EMAILJS_PUBLIC_KEY);
+    }
+    const returnUrl = `${window.location.origin}?summary=${summaryKey}`;
+    await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_name: name || "Healthcare Professional",
+      to_email: email,
+      from_name: "Your Clinical Currency",
+      whatsapp_link: "https://chat.whatsapp.com/KqhTYdiG4LjF9IrxPRWnD2",
+      report_link: returnUrl,
+      message: `Your Clinical Currency results are ready.
+
+Your archetype: ${archetype || "Your Clinical Currency Archetype"}
+Your top income path: ${topPath || "Matched to your background"}
+
+Your free profile summary is saved and waiting for you.
+
+When you are ready to unlock your full personalised blueprint — your 30-day action plan, signature offer, income projections, and skills roadmap — tap the link below to return directly to your results without redoing the assessment.
+
+Launch price: ₦5,000 (going up to ₦15,000 soon).`,
+    });
+  } catch (e) {
+    console.log("Follow-up email failed:", e);
+  }
+};
 
 export default function App() {
   const [userName, setUserName] = useState(() => localStorage.getItem("lead_name") || "");
   const [phase, setPhase] = useState(() => {
-    // Check if returning user with report link
     const params = new URLSearchParams(window.location.search);
+    // Return from report email link
     const reportKey = params.get("report");
     if (reportKey) {
       const stored = localStorage.getItem(reportKey);
       if (stored) return "results";
+    }
+    // Return from free summary email link
+    const summaryKey = params.get("summary");
+    if (summaryKey) {
+      const stored = localStorage.getItem(summaryKey);
+      if (stored) return "free_summary_return";
     }
     return "landing";
   });
@@ -72,7 +111,18 @@ export default function App() {
     return params.get("report") || null;
   });
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState({});
+  const [answers, setAnswers] = useState(() => {
+    // If returning from summary email, restore answers
+    const params = new URLSearchParams(window.location.search);
+    const summaryKey = params.get("summary");
+    if (summaryKey) {
+      try {
+        const stored = JSON.parse(localStorage.getItem(summaryKey));
+        if (stored?.answers) return stored.answers;
+      } catch {}
+    }
+    return {};
+  });
   const [selectedPath, setSelectedPath] = useState(null);
   const [multiSel, setMultiSel] = useState([]);
   const [textVal, setTextVal] = useState("");
@@ -138,7 +188,20 @@ export default function App() {
     setAnswers(updated);
     setMultiSel([]); setTextVal(""); setRating(0); setHover(0); setOtherText("");
     if (step < STEPS.length - 1) setStep(s => s + 1);
-    else setPhase("free_summary");
+    else {
+      // Store quiz answers for return link
+      const email = localStorage.getItem("lead_email");
+      const name = localStorage.getItem("lead_name") || userName;
+      const summaryKey = "ycc_summary_" + (email || Date.now());
+      localStorage.setItem(summaryKey, JSON.stringify({
+        answers: updated,
+        name,
+        email,
+        timestamp: new Date().toISOString(),
+      }));
+      localStorage.setItem("ycc_latest_summary", summaryKey);
+      setPhase("free_summary");
+    }
   };
 
   const handleBack = () => {
@@ -267,7 +330,7 @@ export default function App() {
         />
       )}
 
-      {phase === "free_summary" && (
+      {(phase === "free_summary" || phase === "free_summary_return") && (
         <FreeSummary
           answers={answers}
           userName={userName}
@@ -276,6 +339,14 @@ export default function App() {
             setPhase("payment");
           }}
           onScoreReady={(s, a) => { setFreeScore(s); setFreeArchetype(a); }}
+          onSummaryReady={(score, archetype, topPath) => {
+            const email = localStorage.getItem("lead_email");
+            const name = localStorage.getItem("lead_name") || userName;
+            const summaryKey = localStorage.getItem("ycc_latest_summary");
+            if (email && summaryKey) {
+              sendFreeSummaryEmail(name, email, archetype.name, topPath, summaryKey);
+            }
+          }}
           onReset={reset}
         />
       )}

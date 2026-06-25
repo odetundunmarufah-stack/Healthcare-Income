@@ -98,9 +98,10 @@ const getBlocker = (answers) => {
 
 const TOTAL_SCREENS = 3;
 
-export default function FreeSummary({ answers, userName, onPay, onReset }) {
+export default function FreeSummary({ answers, userName, onPay, onScoreReady, onReset, onSummaryReady }) {
   const [screen, setScreen] = useState(0);
   const [selectedPaths, setSelectedPaths] = useState([]);
+  const [emailSent, setEmailSent] = useState(false);
 
   const score = useMemo(() => getScore(answers), [answers]);
   const archetype = useMemo(() => getArchetype(answers), [answers]);
@@ -110,6 +111,16 @@ export default function FreeSummary({ answers, userName, onPay, onReset }) {
   const scoreColor = score >= 75 ? "#16a34a" : score >= 55 ? "#c8a030" : "#dc2626";
   const scoreLabel = score >= 75 ? "High Readiness" : score >= 55 ? "Moderate Readiness" : "Building Phase";
   const firstName = userName ? userName.split(" ")[0] : null;
+
+  // Fire follow-up email once when user reaches screen 1 (has seen their results)
+  const handleContinueToPath = () => {
+    if (!emailSent && onSummaryReady) {
+      const topPath = paths[0]?.label || "";
+      onSummaryReady(score, archetype, topPath);
+      setEmailSent(true);
+    }
+    setScreen(1);
+  };
 
   const togglePath = (id) => {
     setSelectedPaths(prev => {
@@ -181,7 +192,7 @@ export default function FreeSummary({ answers, userName, onPay, onReset }) {
               </div>
             </div>
 
-            <button className="fs-next-btn" onClick={() => setScreen(1)}>
+            <button className="fs-next-btn" onClick={handleContinueToPath}>
               Choose Your Income Path →
             </button>
           </div>
