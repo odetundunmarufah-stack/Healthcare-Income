@@ -108,6 +108,11 @@ export default function FreeSummary({ answers, userName, onPay, onScoreReady, on
   const blocker = useMemo(() => getBlocker(answers), [answers]);
   const paths = useMemo(() => getPaths(answers), [answers]);
 
+  // Notify parent of score and archetype as soon as computed
+  useMemo(() => {
+    if (onScoreReady) onScoreReady(score, archetype);
+  }, [score, archetype]);
+
   const scoreColor = score >= 75 ? "#16a34a" : score >= 55 ? "#c8a030" : "#dc2626";
   const scoreLabel = score >= 75 ? "High Readiness" : score >= 55 ? "Moderate Readiness" : "Building Phase";
   const firstName = userName ? userName.split(" ")[0] : null;

@@ -11,6 +11,8 @@ import PaymentGate from "./components/PaymentGate";
 import { buildUserMessage, SYSTEM_PROMPT } from "./utils/buildPrompt";
 import "./styles/app.css";
 
+const OTHER_OPTION = "Other — please describe below";
+
 // ─── EMAILJS CONFIG ───────────────────────────────────────────────────────────
 const EMAILJS_SERVICE_ID = "service_skrb4zu";
 const EMAILJS_TEMPLATE_ID = "template_cp2v8ja";
@@ -250,7 +252,13 @@ export default function App() {
           ],
         }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        if (errData?.error?.type === "insufficient_quota" || res.status === 529) {
+          throw new Error("credits");
+        }
+        throw new Error("api");
+      }
       setPhase("results");
       const reader = res.body.getReader();
       const dec = new TextDecoder();
@@ -281,8 +289,12 @@ export default function App() {
         timestamp: new Date().toISOString(),
       }));
       if (email) sendReportEmail(name, email, reportKey);
-    } catch {
-      setError("Something went wrong generating your report. Please try again.");
+    } catch (e) {
+      if (e.message === "credits") {
+        setError("Report generation is temporarily unavailable. Please try again in a few minutes.");
+      } else {
+        setError("Something went wrong generating your report. Please try again.");
+      }
       setPhase("payment");
     }
   };

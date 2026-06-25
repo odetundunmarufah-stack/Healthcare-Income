@@ -5,7 +5,9 @@ const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
 const AMOUNT_KOBO = 500000; // ₦5,000 × 100
 
 export default function PaymentGate({ onSuccess, selectedPath }) {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(
+    localStorage.getItem("lead_email") || localStorage.getItem("paid_email") || ""
+  );
   const [emailError, setEmailError] = useState("");
   const [loading, setLoading] = useState(false);
 
