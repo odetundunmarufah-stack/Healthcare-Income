@@ -8,7 +8,7 @@ import FreeSummary from "./components/FreeSummary";
 import LoadingScreen from "./components/LoadingScreen";
 import ResultsPage from "./components/ResultsPage";
 import PaymentGate from "./components/PaymentGate";
-import { buildPrompt } from "./utils/buildPrompt";
+import { buildUserMessage, SYSTEM_PROMPT } from "./utils/buildPrompt";
 import "./styles/app.css";
 
 // ─── EMAILJS CONFIG ───────────────────────────────────────────────────────────
@@ -226,12 +226,28 @@ export default function App() {
           "Content-Type": "application/json",
           "x-api-key": apiKey,
           "anthropic-version": "2023-06-01",
+          "anthropic-beta": "prompt-caching-2024-07-31",
           "anthropic-dangerous-direct-browser-access": "true",
         },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
-          max_tokens: 4000, stream: true,
-          messages: [{ role: "user", content: buildPrompt(final, path) }],
+          max_tokens: 4000,
+          stream: true,
+          // Static system prompt — cached after first request, reused for all subsequent users
+          system: [
+            {
+              type: "text",
+              text: SYSTEM_PROMPT,
+              cache_control: { type: "ephemeral" },
+            }
+          ],
+          // Dynamic user message — unique per user, never cached
+          messages: [
+            {
+              role: "user",
+              content: buildUserMessage(final, path),
+            }
+          ],
         }),
       });
       if (!res.ok) throw new Error();
