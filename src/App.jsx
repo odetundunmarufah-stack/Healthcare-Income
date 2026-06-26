@@ -47,14 +47,20 @@ const sendReportEmail = async (name, email, reportKey) => {
       to_email: email,
       report_link: reportUrl,
       from_name: "Your Clinical Currency",
-      message: `Your Clinical Currency Blueprint is ready. Tap the link below to view your full personalised report on any device.
+      message: `Thank you for purchasing your Clinical Currency Blueprint. This means a lot, and we do not take it lightly.
+
+Your full personalised report has been generated and is ready for you right now. It includes everything built specifically around your specialty, your personality, and the income path you chose — your 30-day action plan, your signature offer, your skills and certifications roadmap, income projections, and much more.
 
 Your bonuses are inside your report:
-- The First 100k Checklist
+- The First ₦100k Checklist — specific to your chosen path
 - 30 Content Ideas tailored to your specialty
-- YCC Community access
+- Full access to the YCC Community
 
-Join the YCC Community here: https://chat.whatsapp.com/KqhTYdiG4LjF9IrxPRWnD2`,
+Speaking of the YCC Community — please join as soon as you can. This is where implementation actually happens. Your blueprint tells you what to do. The community makes sure you do it, with weekly check-ins, live Q&As, accountability partners, and a group of Nigerian healthcare professionals who are building income right alongside you.
+
+Join the YCC Community here: https://chat.whatsapp.com/KqhTYdiG4LjF9IrxPRWnD2
+
+Your report is one tap away. We are rooting for you.`,
     });
   } catch (e) {
     console.log("Email send failed:", e);
@@ -80,16 +86,18 @@ const sendFreeSummaryEmail = async (name, email, archetype, topPath, summaryKey)
       from_name: "Your Clinical Currency",
       whatsapp_link: "",
       report_link: returnUrl,
-      message: `Your Clinical Currency free profile is saved.
+      message: `Your Clinical Currency profile is ready, and what we found is genuinely exciting.
 
 Your archetype: ${archetype || "Your Clinical Currency Archetype"}
 Your top income path: ${topPath || "Matched to your background"}
 
-Tap the link below to return directly to your results and unlock your full personalised blueprint — without redoing the assessment.
+This is just the beginning of what your assessment revealed. Your full personalised blueprint goes much deeper — it shows you exactly what to do first, how to price your expertise, which certifications will unlock new income doors, and a 30-day action plan built specifically around your clinical schedule.
 
-Your 30-day action plan, signature offer, income projections, skills roadmap, and YCC Community access unlock for ₦5,000.
+When you unlock your full blueprint, you also get immediate access to the YCC Community — a private WhatsApp group of Nigerian healthcare professionals who are actively building income alongside each other. Weekly check-ins, live Q&As, accountability partners, and real support from people who understand what it means to build something while managing a clinical career.
 
-Launch price ends soon.`,
+Your blueprint and your community seat are waiting. Tap the link below to return to your results and unlock everything for ₦5,000.
+
+This is the launch price. It goes up to ₦15,000 soon.`,
     });
   } catch (e) {
     console.log("Follow-up email failed:", e);
