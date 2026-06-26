@@ -47,8 +47,14 @@ const sendReportEmail = async (name, email, reportKey) => {
       to_email: email,
       report_link: reportUrl,
       from_name: "Your Clinical Currency",
-      whatsapp_link: "https://chat.whatsapp.com/KqhTYdiG4LjF9IrxPRWnD2",
-      message: `Your Clinical Currency Blueprint is ready. Tap the button below to view your full personalised report on any device. Your bonuses (First 100k Checklist, 30 Content Ideas, and YCC Community access) are all inside your report.`,
+      message: `Your Clinical Currency Blueprint is ready. Tap the link below to view your full personalised report on any device.
+
+Your bonuses are inside your report:
+- The First 100k Checklist
+- 30 Content Ideas tailored to your specialty
+- YCC Community access
+
+Join the YCC Community here: https://chat.whatsapp.com/KqhTYdiG4LjF9IrxPRWnD2`,
     });
   } catch (e) {
     console.log("Email send failed:", e);
@@ -67,23 +73,23 @@ const sendFreeSummaryEmail = async (name, email, archetype, topPath, summaryKey)
       });
       window.emailjs.init(EMAILJS_PUBLIC_KEY);
     }
-    const returnUrl = `${window.location.origin}?summary=${summaryKey}`;
+    const returnUrl = `${window.location.origin}?summary=${encodeURIComponent(summaryKey)}`;
     await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       to_name: name || "Healthcare Professional",
       to_email: email,
       from_name: "Your Clinical Currency",
-      whatsapp_link: "https://chat.whatsapp.com/KqhTYdiG4LjF9IrxPRWnD2",
+      whatsapp_link: "",
       report_link: returnUrl,
-      message: `Your Clinical Currency results are ready.
+      message: `Your Clinical Currency free profile is saved.
 
 Your archetype: ${archetype || "Your Clinical Currency Archetype"}
 Your top income path: ${topPath || "Matched to your background"}
 
-Your free profile summary is saved and waiting for you.
+Tap the link below to return directly to your results and unlock your full personalised blueprint — without redoing the assessment.
 
-When you are ready to unlock your full personalised blueprint — your 30-day action plan, signature offer, income projections, and skills roadmap — tap the link below to return directly to your results without redoing the assessment.
+Your 30-day action plan, signature offer, income projections, skills roadmap, and YCC Community access unlock for ₦5,000.
 
-Launch price: ₦5,000 (going up to ₦15,000 soon).`,
+Launch price ends soon.`,
     });
   } catch (e) {
     console.log("Follow-up email failed:", e);
@@ -103,8 +109,13 @@ export default function App() {
     // Return from free summary email link
     const summaryKey = params.get("summary");
     if (summaryKey) {
-      const stored = localStorage.getItem(summaryKey);
+      const decoded = decodeURIComponent(summaryKey);
+      const stored = localStorage.getItem(decoded);
       if (stored) return "free_summary_return";
+      // If on different device, localStorage will be empty.
+      // Still show free_summary_return screen with empty answers
+      // so user sees a message to redo the quiz
+      return "free_summary_return";
     }
     return "landing";
   });
@@ -114,12 +125,12 @@ export default function App() {
   });
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState(() => {
-    // If returning from summary email, restore answers
     const params = new URLSearchParams(window.location.search);
     const summaryKey = params.get("summary");
     if (summaryKey) {
       try {
-        const stored = JSON.parse(localStorage.getItem(summaryKey));
+        const decoded = decodeURIComponent(summaryKey);
+        const stored = JSON.parse(localStorage.getItem(decoded));
         if (stored?.answers) return stored.answers;
       } catch {}
     }
@@ -359,24 +370,44 @@ export default function App() {
       )}
 
       {(phase === "free_summary" || phase === "free_summary_return") && (
-        <FreeSummary
-          answers={answers}
-          userName={userName}
-          onPay={(paths) => {
-            setSelectedPath(paths);
-            setPhase("payment");
-          }}
-          onScoreReady={(s, a) => { setFreeScore(s); setFreeArchetype(a); }}
-          onSummaryReady={(score, archetype, topPath) => {
-            const email = localStorage.getItem("lead_email");
-            const name = localStorage.getItem("lead_name") || userName;
-            const summaryKey = localStorage.getItem("ycc_latest_summary");
-            if (email && summaryKey) {
-              sendFreeSummaryEmail(name, email, archetype.name, topPath, summaryKey);
-            }
-          }}
-          onReset={reset}
-        />
+        Object.keys(answers).length > 0 ? (
+          <FreeSummary
+            answers={answers}
+            userName={userName}
+            onPay={(paths) => {
+              setSelectedPath(paths);
+              setPhase("payment");
+            }}
+            onScoreReady={(s, a) => { setFreeScore(s); setFreeArchetype(a); }}
+            onSummaryReady={(score, archetype, topPath) => {
+              const email = localStorage.getItem("lead_email");
+              const name = localStorage.getItem("lead_name") || userName;
+              const summaryKey = localStorage.getItem("ycc_latest_summary");
+              if (email && summaryKey) {
+                sendFreeSummaryEmail(name, email, archetype.name, topPath, summaryKey);
+              }
+            }}
+            onReset={reset}
+          />
+        ) : (
+          // Different device — localStorage empty, ask them to redo quiz
+          <div style={{ minHeight: "100vh", background: "#0a0f28", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", gap: 20 }}>
+            <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 16, fontWeight: 700, color: "#fff" }}>Your<span style={{ color: "#c8a030" }}>Clinical</span>Currency</div>
+            <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 22, fontWeight: 700, color: "#fff", maxWidth: 400 }}>Welcome back</h2>
+            <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 300, color: "rgba(255,255,255,0.5)", maxWidth: 380, lineHeight: 1.7 }}>
+              Your results were saved on your original device. To view them, open this link on the same phone or browser you used for the assessment.
+            </p>
+            <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 300, color: "rgba(255,255,255,0.5)", maxWidth: 380, lineHeight: 1.7 }}>
+              Alternatively, the assessment only takes 10 minutes to redo and your new results will be just as personalised.
+            </p>
+            <button
+              onClick={reset}
+              style={{ background: "#c8a030", color: "#0d1b3e", fontFamily: "'Space Grotesk',sans-serif", fontSize: 13, fontWeight: 700, padding: "14px 32px", border: "none", borderRadius: 4, cursor: "pointer" }}
+            >
+              Redo My Assessment
+            </button>
+          </div>
+        )
       )}
 
       {phase === "payment" && (
