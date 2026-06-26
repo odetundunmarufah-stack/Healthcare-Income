@@ -45,6 +45,7 @@ const sendReportEmail = async (name, email, reportKey) => {
     await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       to_name: name || "Healthcare Professional",
       to_email: email,
+      subject: "Your Clinical Currency Blueprint is ready",
       report_link: reportUrl,
       from_name: "Your Clinical Currency",
       message: `Thank you for purchasing your Clinical Currency Blueprint. This means a lot, and we do not take it lightly.
@@ -79,11 +80,12 @@ const sendFreeSummaryEmail = async (name, email, archetype, topPath, summaryKey)
       });
       window.emailjs.init(EMAILJS_PUBLIC_KEY);
     }
-    const returnUrl = `${window.location.origin}?summary=${encodeURIComponent(summaryKey)}`;
+    const returnUrl = `${window.location.origin}?summary=${summaryKey}`;
     await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       to_name: name || "Healthcare Professional",
       to_email: email,
       from_name: "Your Clinical Currency",
+      subject: "Your Clinical Currency results are ready",
       whatsapp_link: "",
       report_link: returnUrl,
       message: `Your Clinical Currency profile is ready, and what we found is genuinely exciting.
@@ -108,22 +110,16 @@ export default function App() {
   const [userName, setUserName] = useState(() => localStorage.getItem("lead_name") || "");
   const [phase, setPhase] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    // Return from report email link
     const reportKey = params.get("report");
     if (reportKey) {
       const stored = localStorage.getItem(reportKey);
       if (stored) return "results";
     }
-    // Return from free summary email link
     const summaryKey = params.get("summary");
     if (summaryKey) {
-      const decoded = decodeURIComponent(summaryKey);
-      const stored = localStorage.getItem(decoded);
+      const stored = localStorage.getItem(summaryKey);
       if (stored) return "free_summary_return";
-      // If on different device, localStorage will be empty.
-      // Still show free_summary_return screen with empty answers
-      // so user sees a message to redo the quiz
-      return "free_summary_return";
+      return "free_summary_return"; // show friendly message even if different device
     }
     return "landing";
   });
@@ -137,14 +133,18 @@ export default function App() {
     const summaryKey = params.get("summary");
     if (summaryKey) {
       try {
-        const decoded = decodeURIComponent(summaryKey);
-        const stored = JSON.parse(localStorage.getItem(decoded));
+        const stored = JSON.parse(localStorage.getItem(summaryKey));
         if (stored?.answers) return stored.answers;
       } catch {}
     }
     return {};
   });
-  const [selectedPath, setSelectedPath] = useState(null);
+  const [selectedPath, setSelectedPath] = useState(() => {
+    // Restore selected path if returning from email link
+    const stored = localStorage.getItem("ycc_selected_paths");
+    if (stored) { try { return JSON.parse(stored); } catch {} }
+    return null;
+  });
   const [multiSel, setMultiSel] = useState([]);
   const [textVal, setTextVal] = useState("");
   const [otherText, setOtherText] = useState("");
@@ -210,17 +210,17 @@ export default function App() {
     setMultiSel([]); setTextVal(""); setRating(0); setHover(0); setOtherText("");
     if (step < STEPS.length - 1) setStep(s => s + 1);
     else {
-      // Store quiz answers for return link
+      // Store quiz answers for return link — use timestamp not email in key
+      const safeKey = "ycc_" + Date.now();
       const email = localStorage.getItem("lead_email");
       const name = localStorage.getItem("lead_name") || userName;
-      const summaryKey = "ycc_summary_" + (email || Date.now());
-      localStorage.setItem(summaryKey, JSON.stringify({
+      localStorage.setItem(safeKey, JSON.stringify({
         answers: updated,
         name,
         email,
         timestamp: new Date().toISOString(),
       }));
-      localStorage.setItem("ycc_latest_summary", summaryKey);
+      localStorage.setItem("ycc_latest_summary", safeKey);
       setPhase("free_summary");
     }
   };
@@ -237,6 +237,12 @@ export default function App() {
   };
 
   const runAI = async (final, path) => {
+    // Safety check — never run with empty answers
+    if (!final || Object.keys(final).length === 0) {
+      setError("Something went wrong. Please redo your assessment.");
+      setPhase("landing");
+      return;
+    }
     setPhase("loading");
     setStreamed(""); setReport(""); setError("");
     const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
@@ -383,6 +389,7 @@ export default function App() {
             answers={answers}
             userName={userName}
             onPay={(paths) => {
+              localStorage.setItem("ycc_selected_paths", JSON.stringify(paths));
               setSelectedPath(paths);
               setPhase("payment");
             }}
