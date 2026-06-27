@@ -490,7 +490,15 @@ export default function App() {
         <PaymentGate
           selectedPath={selectedPath}
           onSuccess={() => {
-            runAI(answers, selectedPath);
+            // Always read from localStorage — React state may be lost on mobile page reload
+            const latestKey = localStorage.getItem("ycc_latest_summary");
+            const storedAnswers = latestKey
+              ? (() => { try { return JSON.parse(localStorage.getItem(latestKey))?.answers || {}; } catch { return {}; } })()
+              : {};
+            const storedPaths = (() => { try { return JSON.parse(localStorage.getItem("ycc_selected_paths")); } catch { return null; } })();
+            const finalAnswers = Object.keys(storedAnswers).length > 0 ? storedAnswers : answers;
+            const finalPaths = storedPaths || selectedPath;
+            runAI(finalAnswers, finalPaths);
           }}
         />
       )}
