@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { STEPS } from "./data/steps";
 import { parseSections } from "./utils/parseSections";
 import LandingPage from "./components/LandingPage";
@@ -17,6 +17,13 @@ const OTHER_OPTION = "Other — please describe below";
 const EMAILJS_SERVICE_ID = "service_skrb4zu";
 const EMAILJS_TEMPLATE_ID = "template_cp2v8ja";
 const EMAILJS_PUBLIC_KEY = "E5Ak4CU7HZlplLiGP";
+
+// ─── DIAGNOSTIC LOGGER ───────────────────────────────────────────────────────
+// Prefixed logs make it easy to filter in DevTools: filter by "[YCC]"
+const log = (step, data) => {
+  const ts = new Date().toISOString().slice(11, 23);
+  console.log(`[YCC ${ts}] ${step}`, data !== undefined ? data : "");
+};
 
 // ─── FORMSPREE LEAD CAPTURE ───────────────────────────────────────────────────
 const captureLead = async (name, email) => {
@@ -106,8 +113,20 @@ This is the launch price. It goes up to ₦15,000 soon.`,
   }
 };
 
+// ─── CLEAR ALL PAYMENT SESSION FLAGS ─────────────────────────────────────────
+// Called after a successful report delivery AND on reset.
+// Prevents post_payment_reload triggering on future visits.
+const clearPaymentSession = () => {
+  log("clearPaymentSession", "removing paid/paid_ref/paid_email/ycc_selected_paths");
+  localStorage.removeItem("paid");
+  localStorage.removeItem("paid_ref");
+  localStorage.removeItem("paid_email");
+  localStorage.removeItem("ycc_selected_paths");
+};
+
 export default function App() {
   const [userName, setUserName] = useState(() => localStorage.getItem("lead_name") || "");
+
   const [phase, setPhase] = useState(() => {
     const params = new URLSearchParams(window.location.search);
 
@@ -115,45 +134,53 @@ export default function App() {
     const reportKey = params.get("report");
     if (reportKey) {
       const stored = localStorage.getItem(reportKey);
-      if (stored) return "results";
+      if (stored) {
+        log("INIT phase", "results (report email return)");
+        return "results";
+      }
     }
 
     // Return from free summary email link
     const summaryKey = params.get("summary");
     if (summaryKey) {
-      const stored = localStorage.getItem(summaryKey);
-      if (stored) return "free_summary_return";
+      log("INIT phase", "free_summary_return (summary email return)");
       return "free_summary_return";
     }
 
-    // KEY FIX: Paystack mobile reloads the page after payment.
-    // Detect this by checking if paid=true is in localStorage
-    // AND we have answers AND selected paths stored.
-    // If so, skip straight to loading and re-run the AI.
-    const justPaid = localStorage.getItem("paid") === "true"
-      && localStorage.getItem("paid_ref")
-      && localStorage.getItem("ycc_selected_paths")
-      && localStorage.getItem("ycc_latest_summary");
+    // Paystack mobile redirect: page reloaded after payment.
+    // Require paid=true + paid_ref + selected paths + quiz answers all present.
+    const hasPaid = localStorage.getItem("paid") === "true";
+    const hasPaidRef = !!localStorage.getItem("paid_ref");
+    const hasPaths = !!localStorage.getItem("ycc_selected_paths");
+    const latestSummaryKey = localStorage.getItem("ycc_latest_summary");
 
-    if (justPaid) {
-      const summaryData = localStorage.getItem(localStorage.getItem("ycc_latest_summary"));
-      if (summaryData) {
-        try {
-          const parsed = JSON.parse(summaryData);
-          if (parsed?.answers && Object.keys(parsed.answers).length > 0) {
-            return "post_payment_reload";
-          }
-        } catch {}
+    if (hasPaid && hasPaidRef && hasPaths && latestSummaryKey) {
+      try {
+        const summaryData = JSON.parse(localStorage.getItem(latestSummaryKey));
+        if (summaryData?.answers && Object.keys(summaryData.answers).length > 0) {
+          log("INIT phase", "post_payment_reload detected", {
+            paid_ref: localStorage.getItem("paid_ref"),
+            paths: localStorage.getItem("ycc_selected_paths"),
+            answerCount: Object.keys(summaryData.answers).length,
+          });
+          return "post_payment_reload";
+        }
+      } catch (e) {
+        log("INIT phase", "post_payment_reload parse error — falling to landing", e);
       }
     }
 
+    log("INIT phase", "landing");
     return "landing";
   });
+
   const [returnReportKey] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("report") || null;
   });
+
   const [step, setStep] = useState(0);
+
   const [answers, setAnswers] = useState(() => {
     const params = new URLSearchParams(window.location.search);
 
@@ -162,7 +189,10 @@ export default function App() {
     if (summaryKey) {
       try {
         const stored = JSON.parse(localStorage.getItem(summaryKey));
-        if (stored?.answers) return stored.answers;
+        if (stored?.answers) {
+          log("INIT answers", "restored from summary email link", { count: Object.keys(stored.answers).length });
+          return stored.answers;
+        }
       } catch {}
     }
 
@@ -171,23 +201,42 @@ export default function App() {
     if (latestKey && localStorage.getItem("paid") === "true") {
       try {
         const stored = JSON.parse(localStorage.getItem(latestKey));
-        if (stored?.answers) return stored.answers;
+        if (stored?.answers) {
+          log("INIT answers", "restored from post-payment localStorage", { count: Object.keys(stored.answers).length });
+          return stored.answers;
+        }
       } catch {}
     }
 
+    log("INIT answers", "empty — fresh session");
     return {};
   });
+
   const [selectedPath, setSelectedPath] = useState(() => {
-    // Restore selected path if returning from email link
-    const stored = localStorage.getItem("ycc_selected_paths");
-    if (stored) { try { return JSON.parse(stored); } catch {} }
+    // Only pre-restore if we are in a post-payment or email-return context
+    const hasPaid = localStorage.getItem("paid") === "true";
+    const params = new URLSearchParams(window.location.search);
+    const hasSummaryParam = !!params.get("summary");
+
+    if (hasPaid || hasSummaryParam) {
+      const stored = localStorage.getItem("ycc_selected_paths");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          log("INIT selectedPath", "restored", parsed);
+          return parsed;
+        } catch {}
+      }
+    }
     return null;
   });
+
   const [multiSel, setMultiSel] = useState([]);
   const [textVal, setTextVal] = useState("");
   const [otherText, setOtherText] = useState("");
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
+
   const [streamed, setStreamed] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const reportKey = params.get("report");
@@ -196,6 +245,7 @@ export default function App() {
     }
     return "";
   });
+
   const [report, setReport] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const reportKey = params.get("report");
@@ -204,9 +254,15 @@ export default function App() {
     }
     return "";
   });
+
   const [error, setError] = useState("");
   const [freeScore, setFreeScore] = useState(null);
   const [freeArchetype, setFreeArchetype] = useState(null);
+
+  // ─── BUG 1 FIX: derive sections from streamed text ───────────────────────
+  // parseSections was imported but never called. sections was undefined,
+  // crashing ResultsPage on sections.length.
+  const sections = useMemo(() => parseSections(streamed), [streamed]);
 
   const cur = STEPS[step];
 
@@ -246,9 +302,10 @@ export default function App() {
     const updated = { ...answers, [cur.id]: val };
     setAnswers(updated);
     setMultiSel([]); setTextVal(""); setRating(0); setHover(0); setOtherText("");
-    if (step < STEPS.length - 1) setStep(s => s + 1);
-    else {
-      // Store quiz answers for return link — use timestamp not email in key
+    if (step < STEPS.length - 1) {
+      setStep(s => s + 1);
+    } else {
+      // Store quiz answers for return link
       const safeKey = "ycc_" + Date.now();
       const email = localStorage.getItem("lead_email");
       const name = localStorage.getItem("lead_name") || userName;
@@ -259,6 +316,7 @@ export default function App() {
         timestamp: new Date().toISOString(),
       }));
       localStorage.setItem("ycc_latest_summary", safeKey);
+      log("QUIZ complete", { safeKey, answerCount: Object.keys(updated).length });
       setPhase("free_summary");
     }
   };
@@ -274,22 +332,48 @@ export default function App() {
     setStep(s => s - 1);
   };
 
+  // ─── GUARD: prevent runAI from firing twice in the same session ───────────
+  // On mobile, Paystack may fire the callback AND reload the page.
+  // useRef persists across renders; a plain object would reset on every render.
+  const aiRunning = useRef(false);
+
   const runAI = async (final, path) => {
+    // ── Checkpoint 1: entry guard ──
+    if (aiRunning.current) {
+      log("runAI SKIPPED", "already running — duplicate call blocked");
+      return;
+    }
+    aiRunning.current = true;
+
+    log("runAI ENTERED", {
+      phase,
+      answerCount: final ? Object.keys(final).length : 0,
+      path,
+      paid_ref: localStorage.getItem("paid_ref"),
+    });
+
     if (!final || Object.keys(final).length === 0) {
+      log("runAI ABORT", "no answers");
       setError("Your assessment answers were not found. Please complete the quiz again.");
       setPhase("landing");
+      aiRunning.current = false;
       return;
     }
+
+    log("runAI → setPhase(loading)");
     setPhase("loading");
     setStreamed(""); setReport(""); setError("");
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
 
-    // If no API key at all — fail immediately with clear message
+    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
     if (!apiKey) {
+      log("runAI ABORT", "no API key in environment");
       setError("Configuration error. Please contact support.");
       setPhase("payment");
+      aiRunning.current = false;
       return;
     }
+
+    log("runAI → Anthropic request starting", { model: "claude-sonnet-4-20250514", path });
 
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -320,28 +404,41 @@ export default function App() {
           ],
         }),
       });
+
+      log("runAI → Anthropic response received", { status: res.status, ok: res.ok });
+
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         const errType = errData?.error?.type || "";
         const errMsg = errData?.error?.message || "";
+        log("runAI ERROR", { status: res.status, errType, errMsg });
+
         if (res.status === 401) {
           setError("API authentication failed. The API key may be invalid. Error: " + errMsg);
           setPhase("payment");
+          aiRunning.current = false;
           return;
         }
         if (errType === "insufficient_quota" || res.status === 529 || errMsg.includes("credit")) {
           setError("Your report could not be generated — API credits are empty. Please try again shortly.");
           setPhase("payment");
+          aiRunning.current = false;
           return;
         }
         setError("Report generation failed (status " + res.status + "): " + errMsg);
         setPhase("payment");
+        aiRunning.current = false;
         return;
       }
+
+      log("runAI → setPhase(results) — stream starting");
       setPhase("results");
+
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let full = "";
+      let chunkCount = 0;
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -350,14 +447,26 @@ export default function App() {
             const j = JSON.parse(line.slice(6));
             if (j.type === "content_block_delta" && j.delta?.text) {
               full += j.delta.text;
+              chunkCount++;
               setStreamed(full);
             }
           } catch {}
         }
       }
+
+      log("runAI → stream complete", {
+        totalChars: full.length,
+        totalChunks: chunkCount,
+        sectionCount: (full.match(/^## /gm) || []).length,
+      });
+
       setReport(full);
-      // Clear the reload trigger so next visit starts fresh
-      localStorage.removeItem("paid_ref");
+
+      // ── BUG 2 FIX: clear ALL payment session flags after successful delivery ──
+      // Previously only paid_ref was removed. paid=true stayed, causing the next
+      // visit to re-enter post_payment_reload and fire a duplicate AI call.
+      clearPaymentSession();
+
       const email = localStorage.getItem("paid_email") || localStorage.getItem("lead_email");
       const name = localStorage.getItem("lead_name") || userName;
       const reportKey = "ycc_report_" + Date.now();
@@ -366,29 +475,45 @@ export default function App() {
         paths: Array.isArray(path) ? path : [path],
         timestamp: new Date().toISOString(),
       }));
+      log("runAI → report saved", { reportKey, email: email || "(none)" });
       if (email) sendReportEmail(name, email, reportKey);
+
     } catch (e) {
+      log("runAI EXCEPTION", e.message);
       setError("Network error: " + (e.message || "Unknown error. Check your internet connection."));
       setPhase("payment");
+    } finally {
+      aiRunning.current = false;
     }
   };
 
-  // When Paystack reloads the page after mobile payment,
-  // detect it and automatically resume report generation
+  // ─── Mobile reload recovery: fire runAI once on mount if post_payment_reload ─
   useEffect(() => {
     if (phase === "post_payment_reload") {
+      log("useEffect post_payment_reload", {
+        answerCount: Object.keys(answers).length,
+        paths: localStorage.getItem("ycc_selected_paths"),
+      });
       const storedPaths = localStorage.getItem("ycc_selected_paths");
-      const paths = storedPaths ? JSON.parse(storedPaths) : null;
+      let paths = null;
+      try { paths = storedPaths ? JSON.parse(storedPaths) : null; } catch {}
+
       if (answers && Object.keys(answers).length > 0) {
         runAI(answers, paths);
       } else {
+        log("useEffect post_payment_reload", "no answers — falling to payment");
         setPhase("payment");
       }
     }
-  }, []); // runs once on mount only
+  }, []); // intentionally empty — runs once on mount only
+
   const done = report && streamed === report;
 
   const reset = () => {
+    log("reset", "clearing all session state");
+    // ── BUG 4 FIX: clear payment flags on reset so next session starts clean ──
+    clearPaymentSession();
+    localStorage.removeItem("ycc_latest_summary");
     setPhase("landing"); setStep(0); setAnswers({});
     setSelectedPath(null);
     setMultiSel([]); setTextVal(""); setRating(0); setOtherText("");
@@ -401,6 +526,7 @@ export default function App() {
     localStorage.setItem("lead_name", name);
     localStorage.setItem("lead_email", email);
     await captureLead(name, email);
+    log("lead submitted", { name, email });
     setPhase("quiz");
   };
 
@@ -450,6 +576,7 @@ export default function App() {
             answers={answers}
             userName={userName}
             onPay={(paths) => {
+              log("FreeSummary → onPay", { paths });
               localStorage.setItem("ycc_selected_paths", JSON.stringify(paths));
               setSelectedPath(paths);
               setPhase("payment");
@@ -490,6 +617,11 @@ export default function App() {
         <PaymentGate
           selectedPath={selectedPath}
           onSuccess={() => {
+            log("PaymentGate → onSuccess called", {
+              paid_ref: localStorage.getItem("paid_ref"),
+              paid_email: localStorage.getItem("paid_email"),
+            });
+
             // Always read from localStorage — React state may be lost on mobile page reload
             const latestKey = localStorage.getItem("ycc_latest_summary");
             const storedAnswers = latestKey
@@ -498,6 +630,13 @@ export default function App() {
             const storedPaths = (() => { try { return JSON.parse(localStorage.getItem("ycc_selected_paths")); } catch { return null; } })();
             const finalAnswers = Object.keys(storedAnswers).length > 0 ? storedAnswers : answers;
             const finalPaths = storedPaths || selectedPath;
+
+            log("PaymentGate → onSuccess resolved", {
+              answerCount: Object.keys(finalAnswers).length,
+              paths: finalPaths,
+              fromLocalStorage: Object.keys(storedAnswers).length > 0,
+            });
+
             runAI(finalAnswers, finalPaths);
           }}
         />
