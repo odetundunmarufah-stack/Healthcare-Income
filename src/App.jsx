@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { STEPS } from "./data/steps";
 import { parseSections } from "./utils/parseSections";
 import LandingPage from "./components/LandingPage";
@@ -110,17 +110,43 @@ export default function App() {
   const [userName, setUserName] = useState(() => localStorage.getItem("lead_name") || "");
   const [phase, setPhase] = useState(() => {
     const params = new URLSearchParams(window.location.search);
+
+    // Return from report email link
     const reportKey = params.get("report");
     if (reportKey) {
       const stored = localStorage.getItem(reportKey);
       if (stored) return "results";
     }
+
+    // Return from free summary email link
     const summaryKey = params.get("summary");
     if (summaryKey) {
       const stored = localStorage.getItem(summaryKey);
       if (stored) return "free_summary_return";
-      return "free_summary_return"; // show friendly message even if different device
+      return "free_summary_return";
     }
+
+    // KEY FIX: Paystack mobile reloads the page after payment.
+    // Detect this by checking if paid=true is in localStorage
+    // AND we have answers AND selected paths stored.
+    // If so, skip straight to loading and re-run the AI.
+    const justPaid = localStorage.getItem("paid") === "true"
+      && localStorage.getItem("paid_ref")
+      && localStorage.getItem("ycc_selected_paths")
+      && localStorage.getItem("ycc_latest_summary");
+
+    if (justPaid) {
+      const summaryData = localStorage.getItem(localStorage.getItem("ycc_latest_summary"));
+      if (summaryData) {
+        try {
+          const parsed = JSON.parse(summaryData);
+          if (parsed?.answers && Object.keys(parsed.answers).length > 0) {
+            return "post_payment_reload";
+          }
+        } catch {}
+      }
+    }
+
     return "landing";
   });
   const [returnReportKey] = useState(() => {
@@ -130,6 +156,8 @@ export default function App() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState(() => {
     const params = new URLSearchParams(window.location.search);
+
+    // Restore from summary email link
     const summaryKey = params.get("summary");
     if (summaryKey) {
       try {
@@ -137,6 +165,16 @@ export default function App() {
         if (stored?.answers) return stored.answers;
       } catch {}
     }
+
+    // Restore from post-payment page reload
+    const latestKey = localStorage.getItem("ycc_latest_summary");
+    if (latestKey && localStorage.getItem("paid") === "true") {
+      try {
+        const stored = JSON.parse(localStorage.getItem(latestKey));
+        if (stored?.answers) return stored.answers;
+      } catch {}
+    }
+
     return {};
   });
   const [selectedPath, setSelectedPath] = useState(() => {
@@ -237,15 +275,22 @@ export default function App() {
   };
 
   const runAI = async (final, path) => {
-    // Safety check — never run with empty answers
     if (!final || Object.keys(final).length === 0) {
-      setError("Something went wrong. Please redo your assessment.");
+      setError("Your assessment answers were not found. Please complete the quiz again.");
       setPhase("landing");
       return;
     }
     setPhase("loading");
     setStreamed(""); setReport(""); setError("");
     const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+
+    // If no API key at all — fail immediately with clear message
+    if (!apiKey) {
+      setError("Configuration error. Please contact support.");
+      setPhase("payment");
+      return;
+    }
+
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -260,7 +305,6 @@ export default function App() {
           model: "claude-sonnet-4-20250514",
           max_tokens: 4000,
           stream: true,
-          // Static system prompt — cached after first request, reused for all subsequent users
           system: [
             {
               type: "text",
@@ -268,7 +312,6 @@ export default function App() {
               cache_control: { type: "ephemeral" },
             }
           ],
-          // Dynamic user message — unique per user, never cached
           messages: [
             {
               role: "user",
@@ -279,10 +322,21 @@ export default function App() {
       });
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        if (errData?.error?.type === "insufficient_quota" || res.status === 529) {
-          throw new Error("credits");
+        const errType = errData?.error?.type || "";
+        const errMsg = errData?.error?.message || "";
+        if (res.status === 401) {
+          setError("API authentication failed. The API key may be invalid. Error: " + errMsg);
+          setPhase("payment");
+          return;
         }
-        throw new Error("api");
+        if (errType === "insufficient_quota" || res.status === 529 || errMsg.includes("credit")) {
+          setError("Your report could not be generated — API credits are empty. Please try again shortly.");
+          setPhase("payment");
+          return;
+        }
+        setError("Report generation failed (status " + res.status + "): " + errMsg);
+        setPhase("payment");
+        return;
       }
       setPhase("results");
       const reader = res.body.getReader();
@@ -302,29 +356,36 @@ export default function App() {
         }
       }
       setReport(full);
-      // Store report with unique key for email retrieval
+      // Clear the reload trigger so next visit starts fresh
+      localStorage.removeItem("paid_ref");
       const email = localStorage.getItem("paid_email") || localStorage.getItem("lead_email");
       const name = localStorage.getItem("lead_name") || userName;
       const reportKey = "ycc_report_" + Date.now();
       localStorage.setItem(reportKey, JSON.stringify({
-        report: full,
-        name,
-        email,
+        report: full, name, email,
         paths: Array.isArray(path) ? path : [path],
         timestamp: new Date().toISOString(),
       }));
       if (email) sendReportEmail(name, email, reportKey);
     } catch (e) {
-      if (e.message === "credits") {
-        setError("Report generation is temporarily unavailable. Please try again in a few minutes.");
-      } else {
-        setError("Something went wrong generating your report. Please try again.");
-      }
+      setError("Network error: " + (e.message || "Unknown error. Check your internet connection."));
       setPhase("payment");
     }
   };
 
-  const sections = parseSections(streamed);
+  // When Paystack reloads the page after mobile payment,
+  // detect it and automatically resume report generation
+  useEffect(() => {
+    if (phase === "post_payment_reload") {
+      const storedPaths = localStorage.getItem("ycc_selected_paths");
+      const paths = storedPaths ? JSON.parse(storedPaths) : null;
+      if (answers && Object.keys(answers).length > 0) {
+        runAI(answers, paths);
+      } else {
+        setPhase("payment");
+      }
+    }
+  }, []); // runs once on mount only
   const done = report && streamed === report;
 
   const reset = () => {
@@ -435,6 +496,7 @@ export default function App() {
       )}
 
       {phase === "loading" && <LoadingScreen />}
+      {phase === "post_payment_reload" && <LoadingScreen />}
 
       {phase === "results" && (
         <ResultsPage
