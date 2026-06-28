@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { STEPS } from "./data/steps";
 import { parseSections } from "./utils/parseSections";
+import { generateAssessmentId, saveAssessment, loadAssessment, markAssessmentPaid, saveReportKey } from "./utils/db";
 import LandingPage from "./components/LandingPage";
 import LeadGate from "./components/LeadGate";
 import QuizStep from "./components/QuizStep";
@@ -13,19 +14,27 @@ import "./styles/app.css";
 
 const OTHER_OPTION = "Other — please describe below";
 
-// ─── EMAILJS CONFIG ───────────────────────────────────────────────────────────
 const EMAILJS_SERVICE_ID  = "service_skrb4zu";
 const EMAILJS_TEMPLATE_ID = "template_cp2v8ja";
 const EMAILJS_PUBLIC_KEY  = "E5Ak4CU7HZlplLiGP";
 
 // ─── DIAGNOSTIC LOGGER ───────────────────────────────────────────────────────
-// Filter DevTools console by "[YCC FLOW]" to see the full payment → blueprint trace.
 const log = (step, data) => {
   const ts = new Date().toISOString().slice(11, 23);
   console.log(`[YCC FLOW ${ts}] ${step}`, data !== undefined ? data : "");
 };
 
-// ─── FORMSPREE LEAD CAPTURE ───────────────────────────────────────────────────
+// ─── URL HELPERS ─────────────────────────────────────────────────────────────
+// New: /results/{id} — the permanent cross-device link sent in email
+const getAssessmentIdFromUrl = () => {
+  const m = window.location.pathname.match(/^\/results\/([a-z0-9]{10})$/);
+  return m ? m[1] : null;
+};
+// Legacy: ?summary= and ?report= links continue to work
+const getLegacySummaryKey = () => new URLSearchParams(window.location.search).get("summary");
+const getLegacyReportKey  = () => new URLSearchParams(window.location.search).get("report");
+
+// ─── FORMSPREE ───────────────────────────────────────────────────────────────
 const captureLead = async (name, email) => {
   try {
     await fetch("https://formspree.io/f/mrevgoyw", {
@@ -37,7 +46,6 @@ const captureLead = async (name, email) => {
 };
 
 // ─── EMAILJS LOADER ──────────────────────────────────────────────────────────
-// Extracted so both email functions share one loader without duplication.
 const loadEmailJs = () => new Promise((res, rej) => {
   if (window.emailjs) { res(); return; }
   const s = document.createElement("script");
@@ -47,54 +55,21 @@ const loadEmailJs = () => new Promise((res, rej) => {
   document.head.appendChild(s);
 });
 
-// ─── EMAILJS REPORT LINK DELIVERY ────────────────────────────────────────────
-const sendReportEmail = async (name, email, reportKey) => {
-  log("sendReportEmail → starting", { name, email, reportKey });
+// ─── SUMMARY EMAIL ────────────────────────────────────────────────────────────
+// Sent when user reaches screen 1 of the free summary.
+// Link is the permanent /results/{assessmentId} URL.
+const sendSummaryEmail = async ({ name, email, archetype, topPath, assessmentId }) => {
+  log("sendSummaryEmail → starting", { email, assessmentId });
   try {
     await loadEmailJs();
-    const reportUrl = `${window.location.origin}?report=${reportKey}`;
+    const returnUrl = `${window.location.origin}/results/${assessmentId}`;
     await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-      to_name:   name  || "Healthcare Professional",
-      to_email:  email,
-      subject:   "Your Clinical Currency Blueprint is ready",
-      report_link: reportUrl,
-      from_name: "Your Clinical Currency",
-      message: `Thank you for purchasing your Clinical Currency Blueprint. This means a lot, and we do not take it lightly.
-
-Your full personalised report has been generated and is ready for you right now. It includes everything built specifically around your specialty, your personality, and the income path you chose — your 30-day action plan, your signature offer, your skills and certifications roadmap, income projections, and much more.
-
-Your bonuses are inside your report:
-- The First ₦100k Checklist — specific to your chosen path
-- 30 Content Ideas tailored to your specialty
-- Full access to the YCC Community
-
-Speaking of the YCC Community — please join as soon as you can. This is where implementation actually happens. Your blueprint tells you what to do. The community makes sure you do it, with weekly check-ins, live Q&As, accountability partners, and a group of Nigerian healthcare professionals who are building income right alongside you.
-
-Join the YCC Community here: https://chat.whatsapp.com/KqhTYdiG4LjF9IrxPRWnD2
-
-Your report is one tap away. We are rooting for you.`,
-    });
-    log("sendReportEmail → sent OK", { email });
-  } catch (e) {
-    // Email failure is never surfaced to the user — the report is already on screen.
-    // Log the full error so you can diagnose EmailJS issues in the console.
-    log("sendReportEmail → FAILED", { message: e?.message, status: e?.status, text: e?.text });
-  }
-};
-
-// ─── EMAILJS FREE SUMMARY FOLLOW-UP ──────────────────────────────────────────
-const sendFreeSummaryEmail = async (name, email, archetype, topPath, summaryKey) => {
-  log("sendFreeSummaryEmail → starting", { name, email, summaryKey });
-  try {
-    await loadEmailJs();
-    const returnUrl = `${window.location.origin}?summary=${summaryKey}`;
-    await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-      to_name:   name  || "Healthcare Professional",
-      to_email:  email,
-      from_name: "Your Clinical Currency",
-      subject:   "Your Clinical Currency results are ready",
+      to_name:      name  || "Healthcare Professional",
+      to_email:     email,
+      from_name:    "Your Clinical Currency",
+      subject:      "Your Clinical Currency results are ready",
       whatsapp_link: "",
-      report_link: returnUrl,
+      report_link:  returnUrl,
       message: `Your Clinical Currency profile is ready, and what we found is genuinely exciting.
 
 Your archetype: ${archetype || "Your Clinical Currency Archetype"}
@@ -104,19 +79,54 @@ This is just the beginning of what your assessment revealed. Your full personali
 
 When you unlock your full blueprint, you also get immediate access to the YCC Community — a private WhatsApp group of Nigerian healthcare professionals who are actively building income alongside each other. Weekly check-ins, live Q&As, accountability partners, and real support from people who understand what it means to build something while managing a clinical career.
 
-Your blueprint and your community seat are waiting. Tap the link below to return to your results and unlock everything for ₦5,000.
+Your results are saved. Tap the link below to return any time, on any device — your results will be waiting exactly as you left them.
+
+Your blueprint and your community seat are waiting. Unlock everything for ₦5,000.
 
 This is the launch price. It goes up to ₦15,000 soon.`,
     });
-    log("sendFreeSummaryEmail → sent OK", { email });
+    log("sendSummaryEmail → sent OK", { email });
   } catch (e) {
-    log("sendFreeSummaryEmail → FAILED", { message: e?.message, status: e?.status, text: e?.text });
+    log("sendSummaryEmail → FAILED", { message: e?.message, status: e?.status });
   }
 };
 
-// ─── CLEAR ALL PAYMENT SESSION FLAGS ─────────────────────────────────────────
-// Called only after a confirmed successful report delivery, and on reset.
-// Must NOT be called on generation failure — the paid state must survive retries.
+// ─── BLUEPRINT EMAIL ──────────────────────────────────────────────────────────
+// Sent after AI generation completes.
+// Link is the same /results/{assessmentId} URL — no separate report link needed.
+const sendBlueprintEmail = async ({ name, email, assessmentId }) => {
+  log("sendBlueprintEmail → starting", { email, assessmentId });
+  try {
+    await loadEmailJs();
+    const reportUrl = `${window.location.origin}/results/${assessmentId}`;
+    await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_name:    name  || "Healthcare Professional",
+      to_email:   email,
+      subject:    "Your Clinical Currency Blueprint is ready",
+      report_link: reportUrl,
+      from_name:  "Your Clinical Currency",
+      message: `Thank you for purchasing your Clinical Currency Blueprint. This means a lot, and we do not take it lightly.
+
+Your full personalised report has been generated and is ready for you right now. It includes everything built specifically around your specialty, your personality, and the income path you chose — your 30-day action plan, your signature offer, your skills and certifications roadmap, income projections, and much more.
+
+Your bonuses are inside your report:
+- The First ₦100k Checklist — specific to your chosen path
+- 30 Content Ideas tailored to your specialty
+- Full access to the YCC Community
+
+Join the YCC Community here: https://chat.whatsapp.com/KqhTYdiG4LjF9IrxPRWnD2
+
+Your report is saved and waiting. Tap the link below to open it any time, on any device.`,
+    });
+    log("sendBlueprintEmail → sent OK", { email });
+  } catch (e) {
+    log("sendBlueprintEmail → FAILED", { message: e?.message, status: e?.status });
+  }
+};
+
+// ─── CLEAR PAYMENT SESSION FLAGS ─────────────────────────────────────────────
+// Only called after confirmed report delivery and on reset.
+// Never called on generation failure so paid state survives retries.
 const clearPaymentSession = () => {
   log("clearPaymentSession", "removing paid / paid_ref / paid_email / ycc_selected_paths");
   localStorage.removeItem("paid");
@@ -126,20 +136,16 @@ const clearPaymentSession = () => {
 };
 
 // ─── GENERATION FAILED SCREEN ────────────────────────────────────────────────
-// Shown instead of the payment page when blueprint generation fails after payment.
-// Preserves paid state so the user can retry without paying again.
-// errorCode is used to give the user context without showing raw API errors.
+// Shown instead of payment page when blueprint generation fails after payment.
+// Paid state is preserved so the user can retry without paying again.
 function GenerationFailedScreen({ errorCode, errorDetail, onRetry, onReset }) {
   const isCredits   = errorCode === "credits";
   const isAuth      = errorCode === "auth";
   const isNoAnswers = errorCode === "no_answers";
 
-  const heading = isCredits
-    ? "We hit a temporary limit"
-    : isAuth
-    ? "A configuration issue occurred"
-    : isNoAnswers
-    ? "Your assessment answers could not be found"
+  const heading = isCredits   ? "We hit a temporary limit"
+    : isAuth      ? "A configuration issue occurred"
+    : isNoAnswers ? "Your assessment answers could not be found"
     : "Blueprint generation failed";
 
   const body = isCredits
@@ -147,179 +153,155 @@ function GenerationFailedScreen({ errorCode, errorDetail, onRetry, onReset }) {
     : isAuth
     ? "Your payment was received. There is a configuration issue on our end. Please contact support and reference your payment — we will generate your blueprint manually."
     : isNoAnswers
-    ? "Your payment was received, but your quiz answers could not be restored. This can happen if you cleared your browser data. Please contact support — we will resolve this manually."
-    : "Your payment was received. Blueprint generation stopped unexpectedly. Please tap Retry — if the problem continues, contact support and we will resolve it for you.";
+    ? "Your payment was received, but your quiz answers could not be restored. Please contact support — we will resolve this manually."
+    : "Your payment was received. Blueprint generation stopped unexpectedly. Please tap Retry — if the problem continues, contact support.";
 
   return (
-    <div style={{
-      minHeight: "100vh", background: "#0a0f28",
-      display: "flex", flexDirection: "column", alignItems: "center",
-      justifyContent: "center", padding: 32, textAlign: "center", gap: 20,
-    }}>
-      <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 16, fontWeight: 700, color: "#fff" }}>
-        Your<span style={{ color: "#c8a030" }}>Clinical</span>Currency
+    <div style={{ minHeight:"100vh", background:"#0a0f28", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32, textAlign:"center", gap:20 }}>
+      <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:16, fontWeight:700, color:"#fff" }}>
+        Your<span style={{ color:"#c8a030" }}>Clinical</span>Currency
       </div>
-
-      <div style={{ fontSize: 36 }}>{isCredits ? "⏳" : isAuth ? "⚠️" : isNoAnswers ? "❓" : "⚠️"}</div>
-
-      <h2 style={{
-        fontFamily: "'Space Grotesk',sans-serif", fontSize: 22, fontWeight: 700,
-        color: "#fff", maxWidth: 420, margin: 0,
-      }}>
+      <div style={{ fontSize:36 }}>{isCredits ? "⏳" : "⚠️"}</div>
+      <h2 style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:22, fontWeight:700, color:"#fff", maxWidth:420, margin:0 }}>
         {heading}
       </h2>
-
-      <p style={{
-        fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 300,
-        color: "rgba(255,255,255,0.65)", maxWidth: 400, lineHeight: 1.8, margin: 0,
-      }}>
+      <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"rgba(255,255,255,0.65)", maxWidth:400, lineHeight:1.8, margin:0 }}>
         {body}
       </p>
-
-      {/* Raw error detail — visible in case the user screenshots to send to support */}
       {errorDetail && (
-        <div style={{
-          background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
-          borderRadius: 6, padding: "10px 16px", maxWidth: 420,
-          fontFamily: "monospace", fontSize: 11, color: "rgba(255,255,255,0.4)",
-          wordBreak: "break-word", textAlign: "left",
-        }}>
+        <div style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:6, padding:"10px 16px", maxWidth:420, fontFamily:"monospace", fontSize:11, color:"rgba(255,255,255,0.4)", wordBreak:"break-word", textAlign:"left" }}>
           {errorDetail}
         </div>
       )}
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 320 }}>
-        {/* Only show Retry if the failure is retryable */}
+      <div style={{ display:"flex", flexDirection:"column", gap:12, width:"100%", maxWidth:320 }}>
         {!isAuth && !isNoAnswers && (
-          <button
-            onClick={onRetry}
-            style={{
-              background: "#c8a030", color: "#0d1b3e",
-              fontFamily: "'Space Grotesk',sans-serif", fontSize: 14, fontWeight: 700,
-              padding: "14px 32px", border: "none", borderRadius: 4, cursor: "pointer",
-            }}
-          >
+          <button onClick={onRetry} style={{ background:"#c8a030", color:"#0d1b3e", fontFamily:"'Space Grotesk',sans-serif", fontSize:14, fontWeight:700, padding:"14px 32px", border:"none", borderRadius:4, cursor:"pointer" }}>
             Retry Blueprint Generation
           </button>
         )}
-
-        <a
-          href="mailto:hello@yourclinicalcurrency.com"
-          style={{
-            background: "transparent", color: "rgba(255,255,255,0.5)",
-            fontFamily: "'DM Sans',sans-serif", fontSize: 13,
-            padding: "10px", textDecoration: "underline", cursor: "pointer",
-          }}
-        >
+        <a href="mailto:hello@yourclinicalcurrency.com" style={{ color:"rgba(255,255,255,0.5)", fontFamily:"'DM Sans',sans-serif", fontSize:13, padding:"10px", textDecoration:"underline" }}>
           Contact support
         </a>
       </div>
-
-      <p style={{
-        fontFamily: "'DM Sans',sans-serif", fontSize: 11,
-        color: "rgba(255,255,255,0.25)", margin: 0,
-      }}>
+      <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:"rgba(255,255,255,0.25)", margin:0 }}>
         Your payment has been received and is safe. You will not be charged again.
       </p>
     </div>
   );
 }
 
+// ─── RESULTS RETURN LOADING SCREEN ───────────────────────────────────────────
+// Shown for the ~300ms while Firestore loads the assessment on /results/:id.
+function ReturningScreen() {
+  return (
+    <div style={{ minHeight:"100vh", background:"#0a0f28", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16 }}>
+      <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:16, fontWeight:700, color:"#fff" }}>
+        Your<span style={{ color:"#c8a030" }}>Clinical</span>Currency
+      </div>
+      <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"rgba(255,255,255,0.5)" }}>
+        Loading your results…
+      </p>
+    </div>
+  );
+}
+
+// ─── NOT FOUND SCREEN ────────────────────────────────────────────────────────
+function NotFoundScreen({ onReset }) {
+  return (
+    <div style={{ minHeight:"100vh", background:"#0a0f28", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32, textAlign:"center", gap:20 }}>
+      <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:16, fontWeight:700, color:"#fff" }}>
+        Your<span style={{ color:"#c8a030" }}>Clinical</span>Currency
+      </div>
+      <h2 style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:22, fontWeight:700, color:"#fff", maxWidth:400 }}>
+        Results not found
+      </h2>
+      <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"rgba(255,255,255,0.5)", maxWidth:380, lineHeight:1.7 }}>
+        This link may have expired or may have been opened on a different device before your results were saved. Please take the assessment again — it only takes 10 minutes.
+      </p>
+      <button onClick={onReset} style={{ background:"#c8a030", color:"#0d1b3e", fontFamily:"'Space Grotesk',sans-serif", fontSize:13, fontWeight:700, padding:"14px 32px", border:"none", borderRadius:4, cursor:"pointer" }}>
+        Start My Assessment
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 export default function App() {
   const [userName, setUserName] = useState(() => localStorage.getItem("lead_name") || "");
 
-  const [phase, setPhase] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
+  // assessmentId is the single thread connecting quiz → summary → payment → report.
+  // Generated at quiz completion. Restored from URL on /results/:id return.
+  // Stored in localStorage for mobile post-payment reload recovery.
+  const [assessmentId, setAssessmentId] = useState(
+    () => getAssessmentIdFromUrl() || localStorage.getItem("ycc_assessment_id") || null
+  );
 
-    const reportKey = params.get("report");
-    if (reportKey) {
-      const stored = localStorage.getItem(reportKey);
-      if (stored) {
-        log("INIT phase", "results (report email return)");
-        return "results";
-      }
+  const [phase, setPhase] = useState(() => {
+    // ── /results/{id} — cross-device return via email link ───────────────
+    const urlId = getAssessmentIdFromUrl();
+    if (urlId) {
+      log("INIT phase", "results_loading (returning via /results/:id)", { urlId });
+      return "results_loading";
     }
 
-    const summaryKey = params.get("summary");
-    if (summaryKey) {
-      log("INIT phase", "free_summary_return (summary email return)");
+    // ── Legacy ?report= link — keep old links working ────────────────────
+    const legacyReport = getLegacyReportKey();
+    if (legacyReport && localStorage.getItem(legacyReport)) {
+      log("INIT phase", "results (legacy ?report= link)");
+      return "results";
+    }
+
+    // ── Legacy ?summary= link — keep old links working ───────────────────
+    const legacySummary = getLegacySummaryKey();
+    if (legacySummary) {
+      log("INIT phase", "free_summary_return (legacy ?summary= link)");
       return "free_summary_return";
     }
 
-    const hasPaid        = localStorage.getItem("paid") === "true";
-    const hasPaidRef     = !!localStorage.getItem("paid_ref");
-    const hasPaths       = !!localStorage.getItem("ycc_selected_paths");
-    const latestSummaryKey = localStorage.getItem("ycc_latest_summary");
+    // ── Paystack mobile redirect: page reloaded after payment ────────────
+    const justPaid = localStorage.getItem("paid") === "true"
+      && localStorage.getItem("paid_ref")
+      && localStorage.getItem("ycc_selected_paths")
+      && localStorage.getItem("ycc_latest_summary");
 
-    if (hasPaid && hasPaidRef && hasPaths && latestSummaryKey) {
-      try {
-        const summaryData = JSON.parse(localStorage.getItem(latestSummaryKey));
-        if (summaryData?.answers && Object.keys(summaryData.answers).length > 0) {
-          log("INIT phase", "post_payment_reload detected", {
-            paid_ref: localStorage.getItem("paid_ref"),
-            paths:    localStorage.getItem("ycc_selected_paths"),
-            answerCount: Object.keys(summaryData.answers).length,
-          });
-          return "post_payment_reload";
-        }
-      } catch (e) {
-        log("INIT phase", "post_payment_reload parse error — falling to landing", e);
-      }
+    if (justPaid) {
+      log("INIT phase", "post_payment_reload", {
+        paid_ref:    localStorage.getItem("paid_ref"),
+        assessmentId: localStorage.getItem("ycc_assessment_id"),
+      });
+      return "post_payment_reload";
     }
 
     log("INIT phase", "landing");
     return "landing";
   });
 
-  const [returnReportKey] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("report") || null;
-  });
-
   const [step,    setStep]    = useState(0);
   const [answers, setAnswers] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-
-    const summaryKey = params.get("summary");
-    if (summaryKey) {
+    // Legacy ?summary= restore
+    const legacySummary = getLegacySummaryKey();
+    if (legacySummary) {
       try {
-        const stored = JSON.parse(localStorage.getItem(summaryKey));
-        if (stored?.answers) {
-          log("INIT answers", "restored from summary email link", { count: Object.keys(stored.answers).length });
-          return stored.answers;
-        }
+        const stored = JSON.parse(localStorage.getItem(legacySummary));
+        if (stored?.answers) return stored.answers;
       } catch {}
     }
-
+    // Post-payment mobile restore
     const latestKey = localStorage.getItem("ycc_latest_summary");
     if (latestKey && localStorage.getItem("paid") === "true") {
       try {
         const stored = JSON.parse(localStorage.getItem(latestKey));
-        if (stored?.answers) {
-          log("INIT answers", "restored from post-payment localStorage", { count: Object.keys(stored.answers).length });
-          return stored.answers;
-        }
+        if (stored?.answers) return stored.answers;
       } catch {}
     }
-
-    log("INIT answers", "empty — fresh session");
     return {};
   });
 
   const [selectedPath, setSelectedPath] = useState(() => {
     const hasPaid = localStorage.getItem("paid") === "true";
-    const params  = new URLSearchParams(window.location.search);
-    const hasSummaryParam = !!params.get("summary");
-
+    const hasSummaryParam = !!getLegacySummaryKey();
     if (hasPaid || hasSummaryParam) {
-      const stored = localStorage.getItem("ycc_selected_paths");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          log("INIT selectedPath", "restored", parsed);
-          return parsed;
-        } catch {}
-      }
+      try { return JSON.parse(localStorage.getItem("ycc_selected_paths")); } catch {}
     }
     return null;
   });
@@ -331,59 +313,144 @@ export default function App() {
   const [hover,      setHover]       = useState(0);
 
   const [streamed, setStreamed] = useState(() => {
-    const params    = new URLSearchParams(window.location.search);
-    const reportKey = params.get("report");
-    if (reportKey) {
-      try { return JSON.parse(localStorage.getItem(reportKey))?.report || ""; } catch { return ""; }
+    const legacyReport = getLegacyReportKey();
+    if (legacyReport) {
+      try { return JSON.parse(localStorage.getItem(legacyReport))?.report || ""; } catch {}
     }
     return "";
   });
 
   const [report, setReport] = useState(() => {
-    const params    = new URLSearchParams(window.location.search);
-    const reportKey = params.get("report");
-    if (reportKey) {
-      try { return JSON.parse(localStorage.getItem(reportKey))?.report || ""; } catch { return ""; }
+    const legacyReport = getLegacyReportKey();
+    if (legacyReport) {
+      try { return JSON.parse(localStorage.getItem(legacyReport))?.report || ""; } catch {}
     }
     return "";
   });
 
-  // Generation failure state — persisted across retries so the user always
-  // knows what happened and can act on it.
   const [genErrorCode,   setGenErrorCode]   = useState("");
   const [genErrorDetail, setGenErrorDetail] = useState("");
   const [error,          setError]          = useState("");
   const [freeScore,      setFreeScore]      = useState(null);
   const [freeArchetype,  setFreeArchetype]  = useState(null);
 
-  // Bug 1 fix: sections derived from streamed text (was undefined before)
+  // Bug 1 fix: sections derived from streamed text
   const sections = useMemo(() => parseSections(streamed), [streamed]);
 
-  const cur = STEPS[step];
+  // ── Load assessment from Firestore when arriving via /results/:id ─────────
+  useEffect(() => {
+    if (phase !== "results_loading") return;
+    const urlId = getAssessmentIdFromUrl();
+    if (!urlId) { setPhase("landing"); return; }
 
+    log("results_loading → loadAssessment", { urlId });
+
+    loadAssessment(urlId).then((data) => {
+      if (!data) {
+        log("results_loading → not found", { urlId });
+        setPhase("not_found");
+        return;
+      }
+
+      log("results_loading → loaded", { urlId, paid: data.paid, hasReportKey: !!data.reportKey });
+
+      // Restore all state from the persisted assessment
+      setAssessmentId(urlId);
+      localStorage.setItem("ycc_assessment_id", urlId);
+      setAnswers(data.answers || {});
+      setUserName(data.name || "");
+      setFreeScore(data.score ?? null);
+      setFreeArchetype(data.archetype ?? null);
+
+      if (data.paid && data.reportKey) {
+        // Paid user — try to load report from localStorage
+        const storedReport = (() => {
+          try { return JSON.parse(localStorage.getItem(data.reportKey))?.report || ""; } catch { return ""; }
+        })();
+
+        if (storedReport) {
+          // Report is in this browser — show results directly
+          setStreamed(storedReport);
+          setReport(storedReport);
+          setSelectedPath(data.selectedPaths || null);
+          setPhase("results");
+        } else {
+          // Report exists (reportKey is set) but not in this browser's localStorage.
+          // Show generation_failed with a retry option — no charge on retry.
+          // Restore the payment flags so runAI can proceed without re-payment.
+          localStorage.setItem("paid", "true");
+          localStorage.setItem("ycc_selected_paths", JSON.stringify(data.selectedPaths || []));
+          localStorage.setItem("paid_email", data.email || "");
+          setSelectedPath(data.selectedPaths || null);
+          setGenErrorCode("report_not_in_browser");
+          setGenErrorDetail("Report was generated but is not available in this browser. Retry to regenerate.");
+          setPhase("generation_failed");
+        }
+      } else if (data.paid && !data.reportKey) {
+        // Paid but generation never completed — allow retry without charge
+        localStorage.setItem("paid", "true");
+        localStorage.setItem("ycc_selected_paths", JSON.stringify(data.selectedPaths || []));
+        localStorage.setItem("paid_email", data.email || "");
+        setSelectedPath(data.selectedPaths || null);
+        setGenErrorCode("report_not_in_browser");
+        setGenErrorDetail("Payment confirmed but report generation did not complete. Retry to generate.");
+        setPhase("generation_failed");
+      } else {
+        // Unpaid — show free summary with their results intact
+        setPhase("free_summary_return");
+      }
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Mobile post-payment reload recovery ───────────────────────────────────
+  useEffect(() => {
+    if (phase !== "post_payment_reload") return;
+    log("post_payment_reload → ENTERED", {
+      answerCount:  Object.keys(answers).length,
+      assessmentId: localStorage.getItem("ycc_assessment_id"),
+    });
+    const storedPaths = localStorage.getItem("ycc_selected_paths");
+    let paths = null;
+    try { paths = storedPaths ? JSON.parse(storedPaths) : null; } catch {}
+
+    if (Object.keys(answers).length > 0) {
+      runAI(answers, paths);
+    } else {
+      log("post_payment_reload → no answers", {});
+      failGeneration("no_answers", "post_payment_reload: answers not in localStorage");
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const aiRunning = useRef(false);
+
+  // ── All generation failures funnel here — never to the payment page ───────
+  const failGeneration = (code, detail) => {
+    log("runAI → FAILED → generation_failed", { code, detail });
+    setGenErrorCode(code);
+    setGenErrorDetail(detail);
+    setPhase("generation_failed");
+    aiRunning.current = false;
+  };
+
+  const cur = STEPS[step];
   const singleOtherSelected = cur.type === "single" && answers[cur.id] === OTHER_OPTION;
   const multiOtherSelected  = cur.type === "multi"  && multiSel.includes(OTHER_OPTION);
   const otherRequired = (singleOtherSelected || multiOtherSelected) && cur.hasOther;
 
   const canProceed =
-    cur.type === "multi"
-      ? multiSel.length > 0 && (!otherRequired || otherText.trim().length > 0)
-      : cur.type === "text"
-      ? textVal.trim().length > 0
-      : cur.type === "rating"
-      ? rating > 0
-      : !!answers[cur.id] && (!otherRequired || otherText.trim().length > 0);
+    cur.type === "multi"   ? multiSel.length > 0 && (!otherRequired || otherText.trim().length > 0)
+    : cur.type === "text"  ? textVal.trim().length > 0
+    : cur.type === "rating"? rating > 0
+    : !!answers[cur.id] && (!otherRequired || otherText.trim().length > 0);
 
   const getValue = () => {
     if (cur.type === "multi") {
       const base  = multiSel.filter(o => o !== OTHER_OPTION);
-      const parts = multiOtherSelected && otherText.trim()
-        ? [...base, `Other: ${otherText.trim()}`]
-        : base;
+      const parts = multiOtherSelected && otherText.trim() ? [...base, `Other: ${otherText.trim()}`] : base;
       return parts.length > 0 ? parts.join("; ") : "";
     }
-    if (cur.type === "text")   return textVal.trim();
-    if (cur.type === "rating") return rating > 0 ? String(rating) : "";
+    if (cur.type === "text")    return textVal.trim();
+    if (cur.type === "rating")  return rating > 0 ? String(rating) : "";
     if (singleOtherSelected && otherText.trim()) return `Other: ${otherText.trim()}`;
     return answers[cur.id] || "";
   };
@@ -400,14 +467,16 @@ export default function App() {
     if (step < STEPS.length - 1) {
       setStep(s => s + 1);
     } else {
+      // Quiz complete: generate assessment ID and store locally for mobile safety
+      const newId   = generateAssessmentId();
+      const email   = localStorage.getItem("lead_email") || "";
+      const name    = localStorage.getItem("lead_name")  || userName;
       const safeKey = "ycc_" + Date.now();
-      const email   = localStorage.getItem("lead_email");
-      const name    = localStorage.getItem("lead_name") || userName;
-      localStorage.setItem(safeKey, JSON.stringify({
-        answers: updated, name, email, timestamp: new Date().toISOString(),
-      }));
+      localStorage.setItem(safeKey, JSON.stringify({ answers: updated, name, email, timestamp: new Date().toISOString() }));
       localStorage.setItem("ycc_latest_summary", safeKey);
-      log("QUIZ complete", { safeKey, answerCount: Object.keys(updated).length });
+      localStorage.setItem("ycc_assessment_id", newId);
+      setAssessmentId(newId);
+      log("QUIZ complete", { newId, answerCount: Object.keys(updated).length });
       setPhase("free_summary");
     }
   };
@@ -423,64 +492,39 @@ export default function App() {
     setStep(s => s - 1);
   };
 
-  // useRef so the guard persists across renders without triggering re-render
-  const aiRunning = useRef(false);
-
-  // ─── FAIL GENERATION (never to payment page after payment) ───────────────
-  // All error paths inside runAI funnel through here.
-  // code:   short key used by GenerationFailedScreen to pick the right message.
-  // detail: raw technical string shown in a small code block for support screenshots.
-  const failGeneration = (code, detail) => {
-    log(`runAI FAILED → generation_failed`, { code, detail });
-    setGenErrorCode(code);
-    setGenErrorDetail(detail);
-    setPhase("generation_failed");
-    aiRunning.current = false;
-  };
-
-  // ─── RUN AI ──────────────────────────────────────────────────────────────
+  // ─── RUN AI ───────────────────────────────────────────────────────────────
   const runAI = async (final, path) => {
-
-    // ── [YCC FLOW] Checkpoint 1: entry guard ─────────────────────────────
     if (aiRunning.current) {
-      log("runAI → SKIPPED (already running — duplicate call blocked)", {});
+      log("runAI → SKIPPED (duplicate call)", {});
       return;
     }
     aiRunning.current = true;
 
-    // ── [YCC FLOW] Checkpoint 2: answers present ──────────────────────────
+    const currentId = assessmentId || localStorage.getItem("ycc_assessment_id");
+
     log("runAI → ENTERED", {
       answerCount: final ? Object.keys(final).length : 0,
       path,
-      paid_ref:   localStorage.getItem("paid_ref"),
-      paid_email: localStorage.getItem("paid_email"),
-      paid:       localStorage.getItem("paid"),
+      assessmentId: currentId,
+      paid_ref:  localStorage.getItem("paid_ref"),
+      paid:      localStorage.getItem("paid"),
     });
 
     if (!final || Object.keys(final).length === 0) {
-      log("runAI → ABORT no answers", {});
       return failGeneration("no_answers", "answers object was empty at runAI entry");
     }
 
-    // ── [YCC FLOW] Checkpoint 3: phase transition to loading ──────────────
-    log("runAI → setPhase(loading)", {});
+    log("runAI → setPhase(loading)");
     setPhase("loading");
     setStreamed(""); setReport(""); setError("");
 
-    // ── [YCC FLOW] Checkpoint 4: API key present ──────────────────────────
     const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
     log("runAI → API key present?", { present: !!apiKey, length: apiKey?.length ?? 0 });
     if (!apiKey) {
-      return failGeneration("auth", "VITE_ANTHROPIC_API_KEY is missing from environment");
+      return failGeneration("auth", "VITE_ANTHROPIC_API_KEY missing from environment");
     }
 
-    // ── [YCC FLOW] Checkpoint 5: Anthropic request ────────────────────────
-    log("runAI → Anthropic fetch starting", {
-      model:        "claude-sonnet-4-20250514",
-      path,
-      answerCount:  Object.keys(final).length,
-      userMsgLen:   buildUserMessage(final, path).length,
-    });
+    log("runAI → Anthropic fetch starting", { path, userMsgLen: buildUserMessage(final, path).length });
 
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -496,19 +540,11 @@ export default function App() {
           model:      "claude-sonnet-4-20250514",
           max_tokens: 4000,
           stream:     true,
-          system: [{
-            type: "text",
-            text: SYSTEM_PROMPT,
-            cache_control: { type: "ephemeral" },
-          }],
-          messages: [{
-            role:    "user",
-            content: buildUserMessage(final, path),
-          }],
+          system: [{ type:"text", text:SYSTEM_PROMPT, cache_control:{ type:"ephemeral" } }],
+          messages: [{ role:"user", content:buildUserMessage(final, path) }],
         }),
       });
 
-      // ── [YCC FLOW] Checkpoint 6: HTTP response ────────────────────────
       log("runAI → Anthropic response", { status: res.status, ok: res.ok });
 
       if (!res.ok) {
@@ -516,24 +552,18 @@ export default function App() {
         const errType = errData?.error?.type    || "";
         const errMsg  = errData?.error?.message || "";
         log("runAI → Anthropic error body", { errType, errMsg, status: res.status });
-
-        if (res.status === 401) {
-          return failGeneration("auth", `HTTP 401 — ${errMsg}`);
-        }
-        if (errType === "insufficient_quota" || res.status === 529 || errMsg.toLowerCase().includes("credit")) {
+        if (res.status === 401) return failGeneration("auth",    `HTTP 401 — ${errMsg}`);
+        if (errType === "insufficient_quota" || res.status === 529 || errMsg.toLowerCase().includes("credit"))
           return failGeneration("credits", `HTTP ${res.status} ${errType} — ${errMsg}`);
-        }
         return failGeneration("api_error", `HTTP ${res.status} ${errType} — ${errMsg}`);
       }
 
-      // ── [YCC FLOW] Checkpoint 7: stream begins ────────────────────────
-      log("runAI → setPhase(results) — stream starting", {});
+      log("runAI → setPhase(results) — stream starting");
       setPhase("results");
 
       const reader = res.body.getReader();
       const dec    = new TextDecoder();
-      let full       = "";
-      let chunkCount = 0;
+      let full = "", chunkCount = 0;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -550,7 +580,6 @@ export default function App() {
         }
       }
 
-      // ── [YCC FLOW] Checkpoint 8: stream complete ──────────────────────
       log("runAI → stream complete", {
         totalChars:   full.length,
         totalChunks:  chunkCount,
@@ -558,72 +587,52 @@ export default function App() {
       });
 
       if (full.length === 0) {
-        // Stream completed but no content arrived — treat as API error
-        return failGeneration("api_error", "stream completed with 0 bytes — API may have rejected silently");
+        return failGeneration("api_error", "stream completed with 0 bytes");
       }
 
       setReport(full);
 
-      // ── [YCC FLOW] Checkpoint 9: save report locally ──────────────────
-      // Bug 2 fix: clear ALL payment flags — only after confirmed report delivery
-      clearPaymentSession();
-
-      const email     = localStorage.getItem("paid_email") || localStorage.getItem("lead_email");
+      // Save report to localStorage (fast local access)
+      const email     = localStorage.getItem("paid_email") || localStorage.getItem("lead_email") || "";
       const name      = localStorage.getItem("lead_name")  || userName;
       const reportKey = "ycc_report_" + Date.now();
       localStorage.setItem(reportKey, JSON.stringify({
         report: full, name, email,
-        paths:  Array.isArray(path) ? path : [path],
+        paths: Array.isArray(path) ? path : [path],
         timestamp: new Date().toISOString(),
       }));
-      log("runAI → report saved to localStorage", { reportKey, emailWillSend: !!email });
+      log("runAI → report saved to localStorage", { reportKey });
 
-      // ── [YCC FLOW] Checkpoint 10: send email ──────────────────────────
-      if (email) {
-        // Not awaited — email failure must never block or alter UI state
-        sendReportEmail(name, email, reportKey);
-      } else {
-        log("runAI → email SKIPPED (no email in localStorage)", {});
+      // Persist report key to Firestore so returning users can be identified
+      if (currentId) saveReportKey(currentId, reportKey);
+
+      // Bug 2 fix: clear payment flags only after confirmed delivery
+      clearPaymentSession();
+
+      // Send blueprint email with the permanent /results/:id link
+      if (email && currentId) {
+        sendBlueprintEmail({ name, email, assessmentId: currentId });
       }
 
     } catch (e) {
-      // ── [YCC FLOW] Checkpoint ERROR: network or runtime exception ─────
-      log("runAI → EXCEPTION", { message: e.message, stack: e.stack });
+      log("runAI → EXCEPTION", { message: e.message });
       return failGeneration("network", e.message || "Unknown network error");
     } finally {
       aiRunning.current = false;
     }
   };
 
-  // ── Mobile post-payment reload recovery ────────────────────────────────────
-  useEffect(() => {
-    if (phase !== "post_payment_reload") return;
-    log("useEffect post_payment_reload → ENTERED", {
-      answerCount: Object.keys(answers).length,
-      paths:       localStorage.getItem("ycc_selected_paths"),
-      paid_ref:    localStorage.getItem("paid_ref"),
-    });
-    const storedPaths = localStorage.getItem("ycc_selected_paths");
-    let paths = null;
-    try { paths = storedPaths ? JSON.parse(storedPaths) : null; } catch {}
-
-    if (answers && Object.keys(answers).length > 0) {
-      runAI(answers, paths);
-    } else {
-      log("useEffect post_payment_reload → no answers", {});
-      failGeneration("no_answers", "post_payment_reload: answers not restored from localStorage");
-    }
-  }, []); // intentionally empty — runs once on mount only
-
   const done = report && streamed === report;
 
-  // Bug 4 fix: reset clears all payment flags so next session starts clean
+  // Bug 4 fix: reset clears everything so next session starts clean
   const reset = () => {
-    log("reset → clearing all session state", {});
+    log("reset → clearing all session state");
     clearPaymentSession();
     localStorage.removeItem("ycc_latest_summary");
-    setPhase("landing"); setStep(0); setAnswers({});
-    setSelectedPath(null);
+    localStorage.removeItem("ycc_assessment_id");
+    if (window.location.pathname !== "/") window.history.pushState({}, "", "/");
+    setPhase("landing"); setStep(0); setAnswers({}); setSelectedPath(null);
+    setAssessmentId(null);
     setMultiSel([]); setTextVal(""); setRating(0); setOtherText("");
     setStreamed(""); setReport(""); setError("");
     setGenErrorCode(""); setGenErrorDetail("");
@@ -639,6 +648,7 @@ export default function App() {
     setPhase("quiz");
   };
 
+  // ─── RENDER ───────────────────────────────────────────────────────────────
   return (
     <div>
       {phase === "landing" && (
@@ -668,52 +678,59 @@ export default function App() {
             answers={answers}
             userName={userName}
             onPay={(paths) => {
-              log("FreeSummary → onPay", { paths });
+              log("FreeSummary → onPay", { paths, assessmentId });
               localStorage.setItem("ycc_selected_paths", JSON.stringify(paths));
               setSelectedPath(paths);
               setPhase("payment");
             }}
             onScoreReady={(s, a) => { setFreeScore(s); setFreeArchetype(a); }}
             onSummaryReady={(score, archetype, topPath) => {
-              const email      = localStorage.getItem("lead_email");
-              const name       = localStorage.getItem("lead_name") || userName;
-              const summaryKey = localStorage.getItem("ycc_latest_summary");
-              if (email && summaryKey) {
-                sendFreeSummaryEmail(name, email, archetype.name, topPath, summaryKey);
+              // Fires once when user reaches screen 1.
+              // Save to Firestore and send the permanent email link.
+              const email     = localStorage.getItem("lead_email") || "";
+              const name      = localStorage.getItem("lead_name")  || userName;
+              const currentId = assessmentId || localStorage.getItem("ycc_assessment_id");
+              const latestKey = localStorage.getItem("ycc_latest_summary");
+              const storedAnswers = (() => {
+                try { return JSON.parse(localStorage.getItem(latestKey))?.answers || answers; } catch { return answers; }
+              })();
+
+              if (currentId) {
+                saveAssessment({ id:currentId, email, name, answers:storedAnswers, score, archetype, topPath });
+                if (email) {
+                  sendSummaryEmail({ name, email, archetype: archetype?.name, topPath, assessmentId: currentId });
+                }
               }
             }}
             onReset={reset}
           />
         ) : (
-          <div style={{ minHeight: "100vh", background: "#0a0f28", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center", gap: 20 }}>
-            <div style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 16, fontWeight: 700, color: "#fff" }}>Your<span style={{ color: "#c8a030" }}>Clinical</span>Currency</div>
-            <h2 style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 22, fontWeight: 700, color: "#fff", maxWidth: 400 }}>Welcome back</h2>
-            <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 300, color: "rgba(255,255,255,0.5)", maxWidth: 380, lineHeight: 1.7 }}>
-              Your results were saved on your original device. To view them, open this link on the same phone or browser you used for the assessment.
+          // /results/:id was opened on a different device before Firestore saved —
+          // this path is now a rare fallback since Firestore handles cross-device.
+          <div style={{ minHeight:"100vh", background:"#0a0f28", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32, textAlign:"center", gap:20 }}>
+            <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:16, fontWeight:700, color:"#fff" }}>Your<span style={{ color:"#c8a030" }}>Clinical</span>Currency</div>
+            <h2 style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:22, fontWeight:700, color:"#fff", maxWidth:400 }}>Welcome back</h2>
+            <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"rgba(255,255,255,0.5)", maxWidth:380, lineHeight:1.7 }}>
+              Your results were saved. Use the link in your email to open them on any device.
             </p>
-            <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 14, fontWeight: 300, color: "rgba(255,255,255,0.5)", maxWidth: 380, lineHeight: 1.7 }}>
-              Alternatively, the assessment only takes 10 minutes to redo and your new results will be just as personalised.
-            </p>
-            <button
-              onClick={reset}
-              style={{ background: "#c8a030", color: "#0d1b3e", fontFamily: "'Space Grotesk',sans-serif", fontSize: 13, fontWeight: 700, padding: "14px 32px", border: "none", borderRadius: 4, cursor: "pointer" }}
-            >
-              Redo My Assessment
+            <button onClick={reset} style={{ background:"#c8a030", color:"#0d1b3e", fontFamily:"'Space Grotesk',sans-serif", fontSize:13, fontWeight:700, padding:"14px 32px", border:"none", borderRadius:4, cursor:"pointer" }}>
+              Start a New Assessment
             </button>
           </div>
         )
       )}
 
+      {phase === "results_loading" && <ReturningScreen />}
+      {phase === "not_found"       && <NotFoundScreen onReset={reset} />}
+
       {phase === "payment" && (
         <PaymentGate
           selectedPath={selectedPath}
           onSuccess={() => {
-            // ── [YCC FLOW] Checkpoint: Paystack callback fired ────────────
-            log("PaymentGate → onSuccess CALLED", {
-              paid_ref:   localStorage.getItem("paid_ref"),
-              paid_email: localStorage.getItem("paid_email"),
-              paid:       localStorage.getItem("paid"),
-            });
+            const paidRef   = localStorage.getItem("paid_ref")   || "";
+            const paidEmail = localStorage.getItem("paid_email") || localStorage.getItem("lead_email") || "";
+            const currentId = assessmentId || localStorage.getItem("ycc_assessment_id");
+            log("PaymentGate → onSuccess CALLED", { paidRef, paidEmail, assessmentId: currentId });
 
             const latestKey     = localStorage.getItem("ycc_latest_summary");
             const storedAnswers = latestKey
@@ -724,10 +741,13 @@ export default function App() {
             const finalPaths    = storedPaths || selectedPath;
 
             log("PaymentGate → onSuccess RESOLVED", {
-              answerCount:      Object.keys(finalAnswers).length,
-              paths:            finalPaths,
-              fromLocalStorage: Object.keys(storedAnswers).length > 0,
+              answerCount: Object.keys(finalAnswers).length,
+              paths: finalPaths,
+              assessmentId: currentId,
             });
+
+            // Record payment in Firestore before starting generation
+            if (currentId) markAssessmentPaid(currentId, { paidRef, selectedPaths: finalPaths || [] });
 
             runAI(finalAnswers, finalPaths);
           }}
@@ -742,9 +762,8 @@ export default function App() {
           errorCode={genErrorCode}
           errorDetail={genErrorDetail}
           onRetry={() => {
-            log("GenerationFailedScreen → RETRY tapped", { genErrorCode, selectedPath });
+            log("GenerationFailedScreen → RETRY tapped", { genErrorCode });
             setGenErrorCode(""); setGenErrorDetail("");
-            // Re-read answers and paths from localStorage for the retry
             const latestKey    = localStorage.getItem("ycc_latest_summary");
             const retryAnswers = latestKey
               ? (() => { try { return JSON.parse(localStorage.getItem(latestKey))?.answers || {}; } catch { return {}; } })()
