@@ -409,7 +409,7 @@ export default function FreeSummary({ answers, userName, onPay, onScoreReady, on
 
                 <div className="fs-archetype-detail">
                   <div className="fs-archetype-section">
-                    <div className="fs-archetype-section-label">3 strengths this archetype typically has</div>
+                    <div className="fs-archetype-section-label" style={{ marginTop: 18 }}>3 strengths this archetype typically has</div>
                     <ul className="fs-trait-list">
                       {archetype.strengths.map((s, i) => (
                         <li key={i} className="fs-trait-item fs-trait-strength">
@@ -419,7 +419,7 @@ export default function FreeSummary({ answers, userName, onPay, onScoreReady, on
                     </ul>
                   </div>
                   <div className="fs-archetype-section">
-                    <div className="fs-archetype-section-label">3 mistakes people with this archetype usually make</div>
+                    <div className="fs-archetype-section-label" style={{ marginTop: 18 }}>3 mistakes people with this archetype usually make</div>
                     <ul className="fs-trait-list">
                       {archetype.mistakes.map((m, i) => (
                         <li key={i} className="fs-trait-item fs-trait-mistake">

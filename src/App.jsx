@@ -76,20 +76,14 @@ const sendSummaryEmail = async ({ name, email, archetype, topPath, assessmentId 
       subject:      "Your Clinical Currency results are ready",
       whatsapp_link: "",
       report_link:  returnUrl,
-      message: `Your Clinical Currency profile is ready, and what we found is genuinely exciting.
+      message: `Your Clinical Currency profile is ready.
 
 Your archetype: ${archetype || "Your Clinical Currency Archetype"}
 Your top income path: ${topPath || "Matched to your background"}
 
-This is just the beginning of what your assessment revealed. Your full personalised blueprint goes much deeper — it shows you exactly what to do first, how to price your expertise, which certifications will unlock new income doors, and a 30-day action plan built specifically around your clinical schedule.
+Your full personalised blueprint goes much deeper — your 30-day action plan, your signature offer, your skills and certifications roadmap, income projections, and much more. Unlock it at yourclinicalcurrency.com.
 
-When you unlock your full blueprint, you also get immediate access to the YCC Community — a private WhatsApp group of Nigerian healthcare professionals who are actively building income alongside each other. Weekly check-ins, live Q&As, accountability partners, and real support from people who understand what it means to build something while managing a clinical career.
-
-Your results are saved. Tap the link below to return any time, on any device — your results will be waiting exactly as you left them.
-
-Your blueprint and your community seat are waiting. Unlock everything for ₦5,000.
-
-This is the launch price. It goes up to ₦15,000 soon.`,
+Your Clinical Currency team`,
     });
     log("sendSummaryEmail → sent OK", { email });
   } catch (e) {
@@ -166,7 +160,7 @@ ARCHETYPE: ${archetype?.name || "Not recorded"}
 ASSESSMENT ANSWERS (paste into a fresh Claude chat with the blueprint prompt):
 ${answersText}
 
-— Deliver within 2 hours of payment.`;
+— Deliver within 24 hours of payment.`;
 
     await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       to_name:    "Marufah",
@@ -239,7 +233,7 @@ function GenerationFailedScreen({ errorCode, errorDetail, onRetry, onReset }) {
             Retry Blueprint Generation
           </button>
         )}
-        <a href="mailto:hello@yourclinicalcurrency.com" style={{ color:"rgba(255,255,255,0.5)", fontFamily:"'DM Sans',sans-serif", fontSize:13, padding:"10px", textDecoration:"underline" }}>
+        <a href="mailto:yourclinicalcurrency@gmail.com" style={{ color:"rgba(255,255,255,0.5)", fontFamily:"'DM Sans',sans-serif", fontSize:13, padding:"10px", textDecoration:"underline" }}>
           Contact support
         </a>
       </div>
@@ -263,7 +257,7 @@ function DeliveryConfirmedScreen({ email, onReset }) {
         Payment received. Your blueprint is being personally crafted.
       </h2>
       <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"rgba(255,255,255,0.65)", maxWidth:420, lineHeight:1.8, margin:0 }}>
-        During launch week, every blueprint is prepared individually to ensure exceptional quality. Yours will arrive by email at <strong style={{ color:"#fff" }}>{email || "the address you provided"}</strong> within the next <strong style={{ color:"#c8a030" }}>2 hours</strong>.
+        During launch week, every blueprint is prepared individually to ensure exceptional quality. Yours will arrive by email at <strong style={{ color:"#fff" }}>{email || "the address you provided"}</strong> within the next <strong style={{ color:"#c8a030" }}>24 hours</strong>.
       </p>
       <div style={{ background:"rgba(200,160,48,0.08)", border:"1px solid rgba(200,160,48,0.25)", borderRadius:8, padding:"16px 20px", maxWidth:420 }}>
         <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"rgba(255,255,255,0.7)", lineHeight:1.7, margin:0 }}>
@@ -278,7 +272,7 @@ function DeliveryConfirmedScreen({ email, onReset }) {
         Back to start
       </button>
       <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:"rgba(255,255,255,0.25)", margin:0, maxWidth:380 }}>
-        Did not receive your blueprint within 2 hours? Email hello@yourclinicalcurrency.com with your payment reference.
+        Did not receive your blueprint within 24 hours? Email yourclinicalcurrency@gmail.com with your payment reference.
       </p>
     </div>
   );
@@ -816,12 +810,13 @@ export default function App() {
                 try { return JSON.parse(localStorage.getItem(latestKey))?.answers || answers; } catch { return answers; }
               })();
 
-              if (currentId) {
-                saveAssessment({ id:currentId, email, name, answers:storedAnswers, score, archetype, topPath });
-                if (email) {
-                  sendSummaryEmail({ name, email, archetype: archetype?.name, topPath, assessmentId: currentId });
+                if (currentId) {
+                  saveAssessment({ id:currentId, email, name, answers:storedAnswers, score, archetype, topPath });
+                  // Summary email disabled: the /results/:id link cannot currently
+                  // restore quiz state for the user, so sending it creates a broken
+                  // experience. Re-enable once results-return flow is fixed.
+                  // if (email) { sendSummaryEmail(...) }
                 }
-              }
             }}
             onReset={reset}
           />
