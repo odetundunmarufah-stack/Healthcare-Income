@@ -76,12 +76,16 @@ const sendSummaryEmail = async ({ name, email, archetype, topPath, assessmentId 
       subject:      "Your Clinical Currency results are ready",
       whatsapp_link: "",
       report_link:  returnUrl,
-      message: `Your Clinical Currency profile is ready.
+      message: `You just completed your Clinical Currency assessment, and what we found is worth acting on.
 
 Your archetype: ${archetype || "Your Clinical Currency Archetype"}
 Your top income path: ${topPath || "Matched to your background"}
 
-Your full personalised blueprint goes much deeper — your 30-day action plan, your signature offer, your skills and certifications roadmap, income projections, and much more. Unlock it at yourclinicalcurrency.com.
+Your free summary is waiting for you at yourclinicalcurrency.com — it includes your Income Readiness Score, your full archetype profile, your key blocker, and your top income paths ranked specifically for your background.
+
+When you are ready to go deeper, your full personalised blueprint unlocks your complete strategy — your 30-day roadmap, your signature offer, your certifications plan, and your income projections built around your actual schedule.
+
+Visit yourclinicalcurrency.com whenever you are ready to pick up where you left off.
 
 Your Clinical Currency team`,
     });
@@ -812,10 +816,9 @@ export default function App() {
 
                 if (currentId) {
                   saveAssessment({ id:currentId, email, name, answers:storedAnswers, score, archetype, topPath });
-                  // Summary email disabled: the /results/:id link cannot currently
-                  // restore quiz state for the user, so sending it creates a broken
-                  // experience. Re-enable once results-return flow is fixed.
-                  // if (email) { sendSummaryEmail(...) }
+                  if (email) {
+                    sendSummaryEmail({ name, email, archetype: archetype?.name, topPath, assessmentId: currentId });
+                  }
                 }
             }}
             onReset={reset}
