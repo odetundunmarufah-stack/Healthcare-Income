@@ -18,6 +18,12 @@ const EMAILJS_SERVICE_ID  = "service_skrb4zu";
 const EMAILJS_TEMPLATE_ID = "template_cp2v8ja";
 const EMAILJS_PUBLIC_KEY  = "E5Ak4CU7HZlplLiGP";
 
+// ─── MANUAL DELIVERY MODE ─────────────────────────────────────────────────────
+// true  → payment triggers owner email + DeliveryConfirmedScreen (no AI call)
+// false → payment triggers runAI() as normal (restore once Anthropic resolved)
+const MANUAL_DELIVERY_MODE = true;
+const OWNER_NOTIFY_EMAIL   = "yourclinicalcurrency@gmail.com";
+
 // ─── DIAGNOSTIC LOGGER ───────────────────────────────────────────────────────
 const log = (step, data) => {
   const ts = new Date().toISOString().slice(11, 23);
@@ -124,6 +130,60 @@ Your report is saved and waiting. Tap the link below to open it any time, on any
   }
 };
 
+// ─── OWNER NOTIFICATION — MANUAL ORDER ───────────────────────────────────────
+// Fires on payment success while MANUAL_DELIVERY_MODE is true.
+// Sends everything needed to generate the blueprint by hand:
+// customer email, paths, score, archetype, all 15 answers.
+const PATH_LABELS_MAP = {
+  remote_medva:"Medical Virtual Assistant", prior_auth:"Prior Authorisation Specialist",
+  med_writing:"Medical Writing", private_consult:"Private Consultation Practice",
+  health_content:"Health Content Creator", digital_products:"Digital Products & Passive Income",
+  online_courses:"Online Courses & Teaching", corporate_wellness:"Corporate Wellness & Speaking",
+  health_coaching:"Health Coaching & Advisory", tech_clinical:"Tech-Enabled Clinical Path",
+  health_tech:"Health Tech & Digital Ventures", aesthetics:"Medical Aesthetics & Wellness",
+  community_building:"Healthcare Community & Membership",
+};
+
+const notifyOwnerOfManualOrder = async ({ name, email, paidRef, selectedPaths, answers, score, archetype, assessmentId }) => {
+  log("notifyOwnerOfManualOrder → starting", { email, assessmentId });
+  try {
+    await loadEmailJs();
+    const pathLabels = (selectedPaths || []).map(p => PATH_LABELS_MAP[p] || p).join(", ") || "Not recorded";
+    const resultUrl  = assessmentId ? `${window.location.origin}/results/${assessmentId}` : "Not available";
+    const answersText = Object.entries(answers || {}).map(([k,v]) => `${k}: ${v}`).join("\n");
+
+    const message = `NEW PAID ORDER — manual blueprint needed
+
+Customer email: ${email || "Not provided"}
+Customer name: ${name || "Not provided"}
+Payment reference: ${paidRef || "Not recorded"}
+Firestore link: ${resultUrl}
+
+SELECTED PATH(S): ${pathLabels}
+FREE SUMMARY SCORE: ${score ?? "Not recorded"}
+ARCHETYPE: ${archetype?.name || "Not recorded"}
+
+ASSESSMENT ANSWERS (paste into a fresh Claude chat with the blueprint prompt):
+${answersText}
+
+— Deliver within 2 hours of payment.`;
+
+    await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_name:    "Marufah",
+      to_email:   OWNER_NOTIFY_EMAIL,
+      from_name:  "YCC Order Bot",
+      subject:    `New paid order — ${pathLabels}`,
+      report_link: resultUrl,
+      message,
+    });
+    log("notifyOwnerOfManualOrder → sent OK", { email });
+    return true;
+  } catch (e) {
+    log("notifyOwnerOfManualOrder → FAILED", { message: e?.message });
+    return false;
+  }
+};
+
 // ─── CLEAR PAYMENT SESSION FLAGS ─────────────────────────────────────────────
 // Only called after confirmed report delivery and on reset.
 // Never called on generation failure so paid state survives retries.
@@ -185,6 +245,40 @@ function GenerationFailedScreen({ errorCode, errorDetail, onRetry, onReset }) {
       </div>
       <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:"rgba(255,255,255,0.25)", margin:0 }}>
         Your payment has been received and is safe. You will not be charged again.
+      </p>
+    </div>
+  );
+}
+
+// ─── DELIVERY CONFIRMED SCREEN ────────────────────────────────────────────────
+// Shown immediately after payment while MANUAL_DELIVERY_MODE is true.
+function DeliveryConfirmedScreen({ email, onReset }) {
+  return (
+    <div style={{ minHeight:"100vh", background:"#0a0f28", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:32, textAlign:"center", gap:20 }}>
+      <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:16, fontWeight:700, color:"#fff" }}>
+        Your<span style={{ color:"#c8a030" }}>Clinical</span>Currency
+      </div>
+      <div style={{ fontSize:40 }}>✅</div>
+      <h2 style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:24, fontWeight:700, color:"#fff", maxWidth:440, margin:0, lineHeight:1.3 }}>
+        Payment received. Your blueprint is being personally crafted.
+      </h2>
+      <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"rgba(255,255,255,0.65)", maxWidth:420, lineHeight:1.8, margin:0 }}>
+        During launch week, every blueprint is prepared individually to ensure exceptional quality. Yours will arrive by email at <strong style={{ color:"#fff" }}>{email || "the address you provided"}</strong> within the next <strong style={{ color:"#c8a030" }}>2 hours</strong>.
+      </p>
+      <div style={{ background:"rgba(200,160,48,0.08)", border:"1px solid rgba(200,160,48,0.25)", borderRadius:8, padding:"16px 20px", maxWidth:420 }}>
+        <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"rgba(255,255,255,0.7)", lineHeight:1.7, margin:0 }}>
+          While you wait, join the YCC Community for support, accountability, and to connect with other Nigerian healthcare professionals building income alongside you.
+        </p>
+      </div>
+      <a href="https://chat.whatsapp.com/KqhTYdiG4LjF9IrxPRWnD2" target="_blank" rel="noopener noreferrer"
+        style={{ background:"#25d366", color:"#fff", fontFamily:"'Space Grotesk',sans-serif", fontSize:14, fontWeight:700, padding:"14px 28px", borderRadius:4, textDecoration:"none", width:"100%", maxWidth:360, boxSizing:"border-box" }}>
+        Join the YCC Community →
+      </a>
+      <button onClick={onReset} style={{ background:"transparent", border:"1px solid rgba(255,255,255,0.15)", color:"rgba(255,255,255,0.5)", fontFamily:"'Space Grotesk',sans-serif", fontSize:12, fontWeight:600, padding:"12px 28px", borderRadius:4, cursor:"pointer" }}>
+        Back to start
+      </button>
+      <p style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:"rgba(255,255,255,0.25)", margin:0, maxWidth:380 }}>
+        Did not receive your blueprint within 2 hours? Email hello@yourclinicalcurrency.com with your payment reference.
       </p>
     </div>
   );
@@ -387,14 +481,20 @@ export default function App() {
           setPhase("generation_failed");
         }
       } else if (data.paid && !data.reportKey) {
-        // Paid but generation never completed — allow retry without charge
-        localStorage.setItem("paid", "true");
-        localStorage.setItem("ycc_selected_paths", JSON.stringify(data.selectedPaths || []));
-        localStorage.setItem("paid_email", data.email || "");
-        setSelectedPath(data.selectedPaths || null);
-        setGenErrorCode("report_not_in_browser");
-        setGenErrorDetail("Payment confirmed but report generation did not complete. Retry to generate.");
-        setPhase("generation_failed");
+        // Paid but generation never completed
+        if (MANUAL_DELIVERY_MODE) {
+          // Blueprint is being manually prepared — reassure, do not show retry error
+          setSelectedPath(data.selectedPaths || null);
+          setPhase("delivery_confirmed");
+        } else {
+          localStorage.setItem("paid", "true");
+          localStorage.setItem("ycc_selected_paths", JSON.stringify(data.selectedPaths || []));
+          localStorage.setItem("paid_email", data.email || "");
+          setSelectedPath(data.selectedPaths || null);
+          setGenErrorCode("report_not_in_browser");
+          setGenErrorDetail("Payment confirmed but report generation did not complete. Retry to generate.");
+          setPhase("generation_failed");
+        }
       } else {
         // Unpaid — show free summary with their results intact
         setPhase("free_summary_return");
@@ -408,17 +508,37 @@ export default function App() {
     log("post_payment_reload → ENTERED", {
       answerCount:  Object.keys(answers).length,
       assessmentId: localStorage.getItem("ycc_assessment_id"),
+      manualMode:   MANUAL_DELIVERY_MODE,
     });
     const storedPaths = localStorage.getItem("ycc_selected_paths");
     let paths = null;
     try { paths = storedPaths ? JSON.parse(storedPaths) : null; } catch {}
 
-    if (Object.keys(answers).length > 0) {
-      runAI(answers, paths);
-    } else {
+    if (Object.keys(answers).length === 0) {
       log("post_payment_reload → no answers", {});
       failGeneration("no_answers", "post_payment_reload: answers not in localStorage");
+      return;
     }
+
+    if (MANUAL_DELIVERY_MODE) {
+      // Mobile safety net: onSuccess may have been interrupted before the
+      // async email send completed. Re-send if not already confirmed sent.
+      const paidRef = localStorage.getItem("paid_ref") || "";
+      const alreadyNotified = localStorage.getItem("owner_notified_ref") === paidRef;
+      if (!alreadyNotified && paidRef) {
+        const currentId = localStorage.getItem("ycc_assessment_id");
+        const paidEmail = localStorage.getItem("paid_email") || localStorage.getItem("lead_email") || "";
+        const name = localStorage.getItem("lead_name") || "";
+        notifyOwnerOfManualOrder({
+          name, email: paidEmail, paidRef, selectedPaths: paths, answers,
+          score: freeScore, archetype: freeArchetype, assessmentId: currentId,
+        }).then(sent => { if (sent) localStorage.setItem("owner_notified_ref", paidRef); });
+      }
+      setPhase("delivery_confirmed");
+      return;
+    }
+
+    runAI(answers, paths);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const aiRunning = useRef(false);
@@ -630,6 +750,7 @@ export default function App() {
     clearPaymentSession();
     localStorage.removeItem("ycc_latest_summary");
     localStorage.removeItem("ycc_assessment_id");
+    localStorage.removeItem("owner_notified_ref");
     if (window.location.pathname !== "/") window.history.pushState({}, "", "/");
     setPhase("landing"); setStep(0); setAnswers({}); setSelectedPath(null);
     setAssessmentId(null);
@@ -749,6 +870,18 @@ export default function App() {
             // Record payment in Firestore before starting generation
             if (currentId) markAssessmentPaid(currentId, { paidRef, selectedPaths: finalPaths || [] });
 
+            if (MANUAL_DELIVERY_MODE) {
+              // Notify owner with full order details for manual blueprint generation.
+              const name = localStorage.getItem("lead_name") || userName;
+              notifyOwnerOfManualOrder({
+                name, email: paidEmail, paidRef,
+                selectedPaths: finalPaths, answers: finalAnswers,
+                score: freeScore, archetype: freeArchetype, assessmentId: currentId,
+              }).then(sent => { if (sent) localStorage.setItem("owner_notified_ref", paidRef); });
+              setPhase("delivery_confirmed");
+              return;
+            }
+
             runAI(finalAnswers, finalPaths);
           }}
         />
@@ -756,6 +889,13 @@ export default function App() {
 
       {phase === "loading"             && <LoadingScreen />}
       {phase === "post_payment_reload" && <LoadingScreen />}
+
+      {phase === "delivery_confirmed" && (
+        <DeliveryConfirmedScreen
+          email={localStorage.getItem("paid_email") || localStorage.getItem("lead_email") || ""}
+          onReset={reset}
+        />
+      )}
 
       {phase === "generation_failed" && (
         <GenerationFailedScreen

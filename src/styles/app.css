@@ -478,6 +478,55 @@ body{background:var(--paper);font-family:'DM Sans',sans-serif;color:var(--tx);-w
 /* Lead Gate extras */
 .lg-badge{display:inline-block;font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--navy-mid);background:var(--gold-dim);padding:4px 12px;border-radius:20px;margin-bottom:16px;}
 .lg-fields{display:flex;flex-direction:column;gap:4px;margin-bottom:20px;}
-.lg-err{font-family:'DM Sans',sans-serif;font-size:12px;color:#b83232;margin-top:5px;}
+.lg/* ═══════════════════════════════════════════════════════════════════════════
+
+/* ─── SCREEN 0 — ARCHETYPE DEPTH ─────────────────────────────────────────── */
+.fs-archetype-detail{margin-top:18px;display:flex;flex-direction:column;gap:14px;}
+.fs-archetype-section{}
+.fs-archetype-section-label{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:10px;}
+.fs-trait-list{list-style:none;display:flex;flex-direction:column;gap:8px;}
+.fs-trait-item{display:flex;align-items:flex-start;gap:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:300;color:rgba(255,255,255,0.65);line-height:1.65;}
+.fs-trait-icon{flex-shrink:0;font-size:12px;margin-top:3px;}
+.fs-trait-strength .fs-trait-icon{color:#4ade80;}
+.fs-trait-mistake .fs-trait-icon{color:var(--gold);opacity:.8;}
+.fs-archetype-blueprint-hook{background:rgba(200,160,48,0.06);border:1px solid rgba(200,160,48,0.18);border-radius:6px;padding:12px 14px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:400;color:rgba(255,255,255,0.45);line-height:1.6;font-style:italic;}
+
+/* ─── SCREEN 0 — BLOCKER DEPTH ───────────────────────────────────────────── */
+.fs-blocker-underneath{margin-top:14px;padding-top:14px;border-top:1px solid rgba(180,60,60,0.18);}
+.fs-blocker-underneath-label{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:8px;}
+.fs-blocker-underneath-text{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:300;color:rgba(255,255,255,0.5);line-height:1.7;font-style:italic;}
+
+/* ─── SCREEN 2 — TRANSITION HEADER ──────────────────────────────────────── */
+.fs-transition-intro{font-family:'DM Sans',sans-serif;font-size:14px;font-weight:300;color:rgba(255,255,255,0.55);line-height:1.8;margin-top:10px;margin-bottom:20px;}
+
+/* ─── SCREEN 2 — BLUEPRINT COVERAGE LIST ─────────────────────────────────── */
+.fs-transition-coverage{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px 20px 16px;margin-bottom:20px;}
+.fs-transition-coverage-label{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:14px;opacity:.8;}
+.fs-transition-list{list-style:none;display:flex;flex-direction:column;gap:10px;}
+.fs-transition-list li{display:flex;align-items:flex-start;gap:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:300;color:rgba(255,255,255,0.65);line-height:1.65;}
+.fs-transition-list li::before{content:"✓";color:var(--gold);font-size:12px;flex-shrink:0;margin-top:3px;font-weight:700;}
+
+/* ─── SCREEN 2 — PREVIEW CARDS ───────────────────────────────────────────── */
+.fs-previews-section{margin-bottom:20px;}
+.fs-previews-label{font-family:'Space Grotesk',sans-serif;font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:12px;}
+.fs-preview-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:18px 18px 14px;margin-bottom:10px;position:relative;overflow:hidden;}
+.fs-preview-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:44px;background:linear-gradient(transparent,rgba(13,27,62,0.88));pointer-events:none;}
+.fs-preview-card-tag{font-family:'Space Grotesk',sans-serif;font-size:8px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);opacity:.7;margin-bottom:6px;}
+.fs-preview-card-title{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;color:#fff;margin-bottom:10px;line-height:1.3;}
+.fs-preview-card-body{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:300;color:rgba(255,255,255,0.7);line-height:1.75;margin-bottom:10px;}
+.fs-preview-card-fade{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:300;color:rgba(255,255,255,0.25);font-style:italic;line-height:1.55;}
+
+/* ─── SCREEN 2 — BLUEPRINT READY BADGE ───────────────────────────────────── */
+.fs-pw-ready-badge{display:flex;align-items:center;gap:8px;font-family:'Space Grotesk',sans-serif;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;padding:7px 14px;border-radius:20px;margin-bottom:16px;width:fit-content;}
+.fs-pw-ready-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0;animation:pulse 1.5s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* ─── PAYMENT GATE — LAUNCH PRICE ADDITIONS ───────────────────────────────── */
+.pg-regular-price{font-family:'DM Sans',sans-serif;font-size:12px;color:rgba(0,0,0,0.35);text-decoration:line-through;text-align:center;margin-top:-8px;margin-bottom:16px;}
+.pg-delivery-note{display:flex;align-items:flex-start;gap:12px;background:#fef9ec;border:1px solid #e8c84a;border-radius:8px;padding:14px 16px;margin-bottom:22px;}
+.pg-delivery-icon{font-size:20px;flex-shrink:0;line-height:1;}
+.pg-delivery-title{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;color:#0d1b3e;margin-bottom:4px;}
+.pg-delivery-body{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:300;color:#5a5a5a;line-height:1.6;}-err{font-family:'DM Sans',sans-serif;font-size:12px;color:#b83232;margin-top:5px;}
 .lg-trust{display:flex;flex-direction:column;gap:4px;margin-top:12px;}
 .lg-trust-item{font-family:'DM Sans',sans-serif;font-size:12px;color:var(--mu);}
+
