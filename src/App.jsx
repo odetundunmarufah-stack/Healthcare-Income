@@ -150,18 +150,82 @@ const notifyOwnerOfManualOrder = async ({ name, email, paidRef, selectedPaths, a
     const resultUrl  = assessmentId ? `${window.location.origin}/results/${assessmentId}` : "Not available";
     const answersText = Object.entries(answers || {}).map(([k,v]) => `${k}: ${v}`).join("\n");
 
+    // Recompute blocker from answers so it appears in full in the email
+    // without needing a separate prop — same logic as FreeSummary.jsx getBlocker()
+    const blockerRaw = (answers?.biggest_blocker || "").toLowerCase();
+    let blockerCore = "";
+    let blockerTeaser = "";
+    if (blockerRaw.includes("medva") || blockerRaw.includes("medical va") || blockerRaw.includes("virtual assistant") || blockerRaw.includes("client")) {
+      blockerCore = "Already knows the direction. Gap is not awareness — it is landing the first client and positioning for the right roles.";
+      blockerTeaser = "Two less obvious blockers: how they are presenting experience, and where they are looking for clients.";
+    } else if (blockerRaw.includes("judg") || blockerRaw.includes("colleague")) {
+      blockerCore = "Fear of professional judgment is keeping them stuck — more than any skills gap.";
+      blockerTeaser = "Two additional layers: one structural, one psychological. Both have MDCN-aware practical solutions.";
+    } else if (blockerRaw.includes("pay") || blockerRaw.includes("worth") || blockerRaw.includes("confiden")) {
+      blockerCore = "Doubt about whether people will pay them — classic imposter syndrome in high-achieving clinicians.";
+      blockerTeaser = "Specific pricing and positioning mistakes reinforcing the doubt. Blueprint names and addresses each.";
+    } else if (blockerRaw.includes("time") || blockerRaw.includes("busy") || blockerRaw.includes("schedule")) {
+      blockerCore = "Not a time problem — absence of a system that works within the time they actually have.";
+      blockerTeaser = "Two additional reasons time-constrained professionals stall: path choice and order of actions.";
+    } else if (blockerRaw.includes("start") || blockerRaw.includes("begin") || blockerRaw.includes("overwhelm") || blockerRaw.includes("where")) {
+      blockerCore = "Paralysis of not knowing where to start — a clarity problem, not a readiness problem.";
+      blockerTeaser = "Two specific decision points where people in this position get stuck after they begin.";
+    } else if (blockerRaw.includes("tried") || blockerRaw.includes("before") || blockerRaw.includes("stopped") || blockerRaw.includes("failed")) {
+      blockerCore = "Started before and lost momentum — a system problem, not a character flaw.";
+      blockerTeaser = "Usually one of three predictable momentum-loss patterns. Blueprint identifies which applies.";
+    } else if (blockerRaw.includes("relocat") || blockerRaw.includes("japa") || blockerRaw.includes("abroad")) {
+      blockerCore = "Planning to relocate — building remote income now is strategically urgent, not optional.";
+      blockerTeaser = "Two timing mistakes professionals in this position commonly make around sequencing the transition.";
+    } else {
+      blockerCore = answers?.biggest_blocker || "Not specified";
+      blockerTeaser = "One or two less visible underlying blockers — blueprint surfaces both.";
+    }
+
+    const scoreLabel = score >= 75 ? "High Readiness" : score >= 55 ? "Moderate Readiness" : "Building Phase";
+
+    const strengthsList = (archetype?.strengths || []).map((s, i) => `  ${i+1}. ${s}`).join("\n");
+    const mistakesList  = (archetype?.mistakes  || []).map((m, i) => `  ${i+1}. ${m}`).join("\n");
+
     const message = `NEW PAID ORDER — manual blueprint needed
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ORDER DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Customer email: ${email || "Not provided"}
 Customer name: ${name || "Not provided"}
 Payment reference: ${paidRef || "Not recorded"}
 Firestore link: ${resultUrl}
 
-SELECTED PATH(S): ${pathLabels}
-FREE SUMMARY SCORE: ${score ?? "Not recorded"}
-ARCHETYPE: ${archetype?.name || "Not recorded"}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FREE SUMMARY — WHAT THEY SAW
+(Use this to make the blueprint feel continuous from where they left off)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Income Readiness Score: ${score ?? "Not recorded"} / 100 (${scoreLabel})
 
-ASSESSMENT ANSWERS (paste into a fresh Claude chat with the blueprint prompt):
+ARCHETYPE: "${archetype?.name || "Not recorded"}"
+Tagline shown: ${archetype?.tagline || ""}
+
+3 Strengths shown to this user:
+${strengthsList || "  Not recorded"}
+
+3 Mistakes shown to this user:
+${mistakesList || "  Not recorded"}
+
+Key Blocker (core text shown):
+${blockerCore}
+
+What sits underneath (teaser shown):
+${blockerTeaser}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SELECTED PATH(S)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${pathLabels}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ASSESSMENT ANSWERS
+(Paste these into a fresh Claude chat with the blueprint prompt)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${answersText}
 
 — Deliver within 24 hours of payment.`;
