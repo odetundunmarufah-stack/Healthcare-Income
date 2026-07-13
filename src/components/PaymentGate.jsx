@@ -3,12 +3,20 @@ import { useState } from "react";
 const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
 
 // ─── LAUNCH PRICING ──────────────────────────────────────────────────────────
-// Launch price: ₦3,500 while manual delivery is active.
-// To revert to ₦5,000 when auto-generation resumes:
-//   AMOUNT_KOBO = 500000, DISPLAY_PRICE = "5,000", delete the REGULAR_PRICE line.
-const AMOUNT_KOBO    = 350000;  // ₦3,500 × 100
+const AMOUNT_KOBO    = 350000;
 const DISPLAY_PRICE  = "3,500";
-const REGULAR_PRICE  = "5,000"; // shown crossed out
+const REGULAR_PRICE  = "5,000";
+
+// ─── COMPLIMENTARY ACCESS WHITELIST ──────────────────────────────────────────
+// Emails listed here bypass payment entirely and go straight to blueprint delivery.
+// All lowercase — comparison is case-insensitive.
+const COMPLIMENTARY_EMAILS = [
+  "carleherbdul@yahoo.com",
+  "waleoyewole2008@gmail.com",
+];
+
+const isComplimentary = (email) =>
+  COMPLIMENTARY_EMAILS.includes(email.trim().toLowerCase());
 
 export default function PaymentGate({ onSuccess, selectedPath }) {
   const [email, setEmail] = useState(
@@ -26,6 +34,15 @@ export default function PaymentGate({ onSuccess, selectedPath }) {
     }
     setEmailError("");
     setLoading(true);
+
+    // Complimentary access — skip Paystack entirely
+    if (isComplimentary(email)) {
+      localStorage.setItem("paid", "true");
+      localStorage.setItem("paid_email", email);
+      localStorage.setItem("paid_ref", "COMPLIMENTARY");
+      onSuccess();
+      return;
+    }
 
     const handler = window.PaystackPop.setup({
       key: PAYSTACK_PUBLIC_KEY,
