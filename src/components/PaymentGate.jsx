@@ -1,4 +1,6 @@
 import { useState } from "react";
+import ReviewsSection from './components/ReviewsSection';
+import FAQSection from './components/FAQSection';
 
 const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
 
@@ -98,6 +100,9 @@ export default function PaymentGate({ onSuccess, selectedPath }) {
           <li>✓ Realistic income projections</li>
           <li>✓ Mindset &amp; blocker audit</li>
         </ul>
+        <ReviewsSection />
+
+<FAQSection />
 
         <div className="pg-field">
           <label className="pg-label" htmlFor="pg-email">Your email address</label>
