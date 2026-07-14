@@ -1,6 +1,6 @@
 import { useState } from "react";
-import ReviewsSection from './components/ReviewsSection';
-import FAQSection from './components/FAQSection';
+import ReviewsSection from './ReviewsSection';
+import FAQSection from './FAQSection';
 
 const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
 
